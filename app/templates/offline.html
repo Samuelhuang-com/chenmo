@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}離線中｜{{ settings.app_name }}{% endblock %}
+{% block main %}
+<section class="paper offline">
+  <img src="{{ brand('logo.svg') }}" alt="" width="96" height="96">
+  <h2>目前沒有網路</h2>
+  <p>問字與老師即時看字都需要連線。網路恢復後，請重新整理這一頁。</p>
+  <button class="btn btn-zhu" type="button" onclick="location.reload()">重新整理</button>
+</section>
+{% endblock %}

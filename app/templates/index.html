@@ -7,6 +7,10 @@
     <p>心中有事，不必長篇。寫下一句所問，再於格中親手寫一個字。</p>
     <p>老師看的不只是字，還有您落筆的先後、停頓與輕重。每一筆，都會照著您寫下的順序呈到老師案前。</p>
     <a class="btn btn-zhu" href="/ask">寫字問事</a>
+    <div class="install" id="install" hidden>
+      <button class="btn on-yan" type="button" id="install-btn">安裝到手機主畫面</button>
+    </div>
+    <p class="install hint" id="install-ios" hidden>iPhone：在 Safari 點下方「分享」，再選「加入主畫面」。</p>
   </div>
 </section>
 
@@ -18,4 +22,23 @@
     <li><b>三</b><span>送出後，老師會從字的五行、古字本義與字義為您解讀，完成時頁面會自動更新。</span></li>
   </ol>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+  (() => {
+    const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+    if (standalone) return;
+    let deferred = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault(); deferred = e;
+      document.getElementById("install").hidden = false;
+    });
+    document.getElementById("install-btn").onclick = async () => {
+      if (!deferred) return;
+      deferred.prompt(); await deferred.userChoice; deferred = null;
+      document.getElementById("install").hidden = true;
+    };
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) document.getElementById("install-ios").hidden = false;
+  })();
+</script>
 {% endblock %}

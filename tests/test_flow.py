@@ -430,3 +430,28 @@ def test_sqlite_list_by_owner(tmp_path):
 def test_legal_pages():
     assert "個人資料保護法" in client.get("/privacy").text
     assert "不構成醫療" in client.get("/terms").text
+
+
+def test_pwa():
+    m = client.get("/manifest.webmanifest")
+    assert m.status_code == 200 and "manifest+json" in m.headers["content-type"]
+    d = m.json()
+    assert d["display"] == "standalone" and d["short_name"] == "辰墨軒"
+    for icon in d["icons"]:
+        assert client.get(icon["src"]).status_code == 200            # 每個圖示都存在
+    assert {i["purpose"] for i in d["icons"]} == {"any", "maskable"}
+    sw = client.get("/sw.js")
+    assert sw.status_code == 200 and "javascript" in sw.headers["content-type"]
+    assert "__VERSION__" not in sw.text and "chenmo-" in sw.text
+    assert "目前沒有網路" in client.get("/offline").text
+    home = client.get("/").text
+    assert 'rel="manifest"' in home and "apple-touch-icon" in home and "/static/brand/" in home
+
+
+def test_brand_switch(monkeypatch):
+    from app.config import get_settings
+    for k in "ABCDE":
+        monkeypatch.setattr(get_settings(), "brand_logo", k)
+        assert f"/static/brand/{k}/logo.svg" in client.get("/").text
+    monkeypatch.setattr(get_settings(), "brand_logo", "Z")              # 不存在的款式退回 C
+    assert "/static/brand/C/logo.svg" in client.get("/").text

@@ -337,3 +337,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .legal h3 { font-family: var(--kai); font-weight: 400; font-size: var(--step-1); margin: 24px 0 6px; }
 .legal ul { padding-left: 1.2em; margin: 0; }
 .legal a { color: var(--zhu); }
+
+/* ---------- Logo／PWA ---------- */
+.brand-logo { width: 44px; height: 44px; display: block; }
+.install { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.install .hint { margin: 0; color: var(--tai); }
+.offline { max-width: 480px; margin: 60px auto; text-align: center; }

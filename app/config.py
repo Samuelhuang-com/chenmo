@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     app_name: str = "辰墨軒"
     app_tagline: str = "一字問心・龍墨解疑"
+    # Logo 款式：A 金印／B 玄底金辰／C 金環龍盤／D 金格朱印／E 金錢圓章（圖檔在 app/static/brand/）
+    brand_logo: str = "C"
 
     # 簽署 session cookie 用，正式環境請放在 Secret Manager
     secret_key: str = "dev-only-change-me"

@@ -10,12 +10,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="{{ brand('logo.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ brand('favicon-32.png') }}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{{ brand('apple-touch-icon.png') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{ settings.app_name }}">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   {% block head %}{% endblock %}
 </head>
 <body>
   <header class="site-head">
     <a class="brand" href="/" aria-label="{{ settings.app_name }} 首頁">
-      <span class="seal" aria-hidden="true"><span>辰</span><span>墨</span></span>
+      <img class="brand-logo" src="{{ brand('logo.svg') }}" alt="" width="44" height="44">
       <span class="brand-name">{{ settings.app_name }}</span>
     </a>
     <nav class="site-nav">{% block nav %}<a href="/ask">問字</a>{% endblock %}{% block nav_me %}{% if request.session.get("student") %}<a href="/me">我的問字</a>{% else %}<a href="/me/login?next=/me">登入</a>{% endif %}{% endblock %}</nav>
@@ -25,5 +33,10 @@
     © {{ settings.app_name }}
   </footer>
   {% block scripts %}{% endblock %}
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+    }
+  </script>
 </body>
 </html>
