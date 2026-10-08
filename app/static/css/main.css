@@ -364,3 +364,33 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .pad-lock span { margin-top: 10px; padding: 6px 14px; border-radius: 999px; text-align: center; line-height: 1.5;
   background: var(--yan, #2b2723); color: var(--xuan); font-size: var(--step--1, .9rem); letter-spacing: .06em; }
 #pad-box.locked .pad-lock { display: flex; }
+
+/* 解字資料 / 解讀 分開編輯 */
+.only-teacher { margin-left: 10px; font-size: var(--step--1); font-weight: normal; color: var(--tai); letter-spacing: .04em; }
+.only-teacher.is-public { color: var(--zhu); }
+.reading-box textarea#reading { width: 100%; font-size: var(--step-0); line-height: 1.9; }
+.reading-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; min-height: 28px; }
+
+/* 解讀富文字編輯器 */
+.answer.rich { white-space: normal; }
+.answer.rich p, .answer.rich div { margin: 0 0 .6em; }
+.answer.rich ul, .answer.rich ol { margin: .3em 0 .6em 1.4em; padding: 0; }
+.rte { border: 1px solid #b9ab8f; border-radius: 10px; background: #fffdf8; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.rte:focus-within { border-color: var(--zhu); box-shadow: 0 0 0 3px rgba(179,38,30,.12); }
+.rte-bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  padding: 8px 10px; background: #f7f3ea; border-bottom: 1px solid #d8cdb4; border-radius: 10px 10px 0 0; }
+.rte-bar button, .rte-bar select, .rte-bar .color-btn {
+  box-sizing: border-box; min-width: 36px; height: 36px; padding: 0 8px; margin: 0; border: 0; border-radius: 6px;
+  background: transparent; color: #2b2b2b; font: inherit; font-size: 1rem; line-height: 1; letter-spacing: 0;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.rte-bar button:hover, .rte-bar .color-btn:hover { background: rgba(0,0,0,.08); }
+.rte-bar button:active { background: rgba(0,0,0,.16); }
+.rte-bar select { border: 1px solid #d8cdb4; background: #fff; font-size: .9rem; min-width: 76px; padding: 0 6px; }
+.rte-bar .sep { width: 1px; height: 22px; background: #d8cdb4; margin: 0 6px; }
+.rte-bar .color-btn { position: relative; overflow: hidden; }
+.rte-bar .color-btn input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.c-a { font-weight: 700; font-size: 1.05rem; border-bottom: 3px solid var(--zhu); line-height: 1; padding: 0 2px 1px; }
+.c-h { display: inline-flex; color: #e0b800; }
+.rte-body { min-height: 280px; padding: 16px 18px; outline: none; font-size: var(--step-0); line-height: 1.9; white-space: normal;
+  color: #222; cursor: text; background: transparent; border-radius: 0 0 10px 10px; }
+.rte-body:empty::before, .rte-body[data-empty="1"]::before { content: attr(data-placeholder); color: #a79d86; }

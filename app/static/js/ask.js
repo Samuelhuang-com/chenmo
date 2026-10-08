@@ -62,7 +62,8 @@ document.querySelectorAll("input[name=gender]").forEach(r => r.addEventListener(
 
 // ---- 手寫板 ----
 const pad = new BrushPad($("pad"), {
-  onFirstTouch: () => { q.blur(); showErr(""); },
+  onFirstTouch: () => showErr(""),
+  onBlocked: () => { if (typing()) document.activeElement.blur(); },
   onStrokeStart: (seq, t0) => send({ type: "stroke_start", seq, t0 }),
   onPoints: (seq, points) => send({ type: "stroke_points", seq, points }),
   onStrokeEnd: seq => send({ type: "stroke_end", seq }),
@@ -126,10 +127,19 @@ $("pick-close").onclick = () => {
 
 // ---- 字格完整出現在畫面內，才開始接受書寫（避免捲動時誤觸畫到邊框） ----
 const padBox = $("pad-box");
+const lockText = padBox.querySelector(".pad-lock span");
+const LOCK_MSG = "請把字格完整滑進畫面再開始書寫";
+const TYPING_MSG = "請先點一下字格收起鍵盤，再開始書寫";
 let fullyVisible = true;
+function typing() {
+  const el = document.activeElement;
+  return !!el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && ["text", "number", "tel", "search", ""].includes(el.type)));
+}
 function applyPadLock() {
-  pad.enabled = fullyVisible || !!pad.cur;     // 已經下筆的這一筆要寫完
+  const isTyping = typing();
+  pad.enabled = (fullyVisible && !isTyping) || !!pad.cur;     // 已經下筆的這一筆要寫完
   padBox.classList.toggle("locked", !pad.enabled);
+  lockText.textContent = isTyping ? TYPING_MSG : LOCK_MSG;
 }
 if ("IntersectionObserver" in window) {
   fullyVisible = false;
@@ -138,11 +148,17 @@ if ("IntersectionObserver" in window) {
   new IntersectionObserver(([en]) => {
     // 字格比螢幕還高時，放寬為「螢幕能容納的部分都在畫面內」
     const need = Math.min(0.98, (innerHeight * 0.98) / Math.max(en.boundingClientRect.height, 1));
-    fullyVisible = en.intersectionRatio >= need;
+    // 解鎖後只要大部分還在畫面內就維持可寫，避免畫面微幅晃動時一直鎖／解鎖
+    fullyVisible = fullyVisible ? en.intersectionRatio >= Math.min(need, 0.6) : en.intersectionRatio >= need;
     applyPadLock();
   }, { threshold: steps }).observe(padBox);
   ["pointerup", "pointercancel"].forEach(t => $("pad").addEventListener(t, () => setTimeout(applyPadLock, 0)));
 }
+// 輸入問題、年次時鍵盤會改變畫面大小，期間先不接受書寫
+document.addEventListener("focusin", applyPadLock);
+document.addEventListener("focusout", () => setTimeout(applyPadLock, 150));
+// 手機不要因為手指下拉而重新整理或整頁彈跳
+document.documentElement.style.overscrollBehaviorY = "none";
 
 $("undo").onclick = () => pad.undo();
 $("clear").onclick = () => pad.clear();

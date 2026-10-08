@@ -47,6 +47,9 @@ class Case(BaseModel):
     notes: str = ""                      # 老師的完整解字稿（五段，問事者看不到）
     revision: int = 0                    # 第幾次送出（收回後重送會加 1）
     retracted_at: int | None = None
+    reading_draft: str = ""              # 【解讀】編輯器內容（HTML，自動暫存）
+    answer_html: str = ""                # 已送出的【解讀】（HTML）；空表示舊的純文字
+    reading_edited_at: int | None = None  # 解讀送出後又修改的時間
     draft: str = ""                      # 系統帶出的解字草稿（快取，避免重複呼叫 AI）
     draft_char: str = ""
     rewrite_requested_at: int | None = None   # 老師請問事者重寫的時間
@@ -70,7 +73,8 @@ class Case(BaseModel):
                                         "gender", "profile_text",
                                         "status", "stroke_count",
                                         "created_at", "submitted_at", "answered_at", "answer",
-                                        "rewrite_requested_at", "rewrite_reason"})
+                                        "rewrite_requested_at", "rewrite_reason", "reading_edited_at",
+                                        "answer_html"})
 
 
 ZODIAC = "鼠牛虎兔龍蛇馬羊猴雞狗豬"
@@ -150,7 +154,9 @@ class JieziIn(BaseModel):
 
 class AnswerIn(BaseModel):
     body: str = Field(min_length=1, max_length=20000)   # 老師的完整解字稿
+    reading_html: str | None = Field(default=None, max_length=40000)   # 【解讀】編輯器的 HTML
 
 
 class NotesIn(BaseModel):
     body: str = Field(max_length=20000)
+    reading_html: str | None = Field(default=None, max_length=40000)

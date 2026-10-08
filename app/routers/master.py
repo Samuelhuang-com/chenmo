@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse
 from app.auth import SESSION_KEY, STUDENT_KEY, get_oauth, require_master_api, require_master_page
 from app.config import get_settings
 from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, RewriteIn, now_ms
+from app.services.richtext import html_to_text, sanitize_html, text_to_html
 from app.services.sections import public_reading
 from app.services.jiezi import compose
 from app.repositories import get_repo
@@ -148,8 +149,14 @@ async def workbench(request: Request, case_id: str, master: dict = Depends(requi
     case = await get_repo().get(case_id)
     if not case:
         raise HTTPException(404, "查無此案件")
+    from app.services.sections import split_sections
+    reading_init = case.reading_draft or case.answer_html
+    if not reading_init:   # 舊資料：從純文字的【解讀】段落（或已送出的內容）轉成段落
+        reading_init = text_to_html(case.answer or split_sections(case.notes or case.draft or "").get("解讀", ""))
+    from app.services.sections import AI_MARK as _AI, NO_AI_MARK
+    reading_init = reading_init.replace(NO_AI_MARK, "")
     return templates.TemplateResponse(request, "master/case.html",
-                                      {"master": master, "case": case})
+                                      {"master": master, "case": case, "reading_init": reading_init})
 
 
 # ---------------- API ----------------
@@ -167,6 +174,15 @@ async def api_case(case_id: str, master: dict = Depends(require_master_api)):
     return {"case": case.model_dump(mode="json"), "events": await repo.list_events(case_id)}
 
 
+def _reading_of(body: AnswerIn) -> tuple[str, str]:
+    """回傳（純文字解讀，安全的 HTML）。有編輯器內容就用編輯器的，否則沿用舊的【解讀】段落。"""
+    if body.reading_html is not None:
+        from app.services.sections import AI_MARK, NO_AI_MARK
+        html_ = sanitize_html(body.reading_html).replace(AI_MARK, "").replace(NO_AI_MARK, "")
+        return html_to_text(html_), html_
+    return public_reading(body.body), ""
+
+
 @router.post("/api/master/cases/{case_id}/answer")
 async def api_answer(case_id: str, body: AnswerIn, master: dict = Depends(require_master_api)):
     """送出（或重送）解字。問事者只會收到【解讀】段落，其餘段落留在老師的解字稿。"""
@@ -178,15 +194,35 @@ async def api_answer(case_id: str, body: AnswerIn, master: dict = Depends(requir
         raise HTTPException(409, "問事者尚未送出")
     if case.status == CaseStatus.answered:
         raise HTTPException(409, "此字已送出，請先收回再重送")
-    reading = public_reading(body.body)
+    reading, html_ = _reading_of(body)
     if not reading:
         raise HTTPException(422, "【解讀】段落是空的。問事者只會收到【解讀】，請先寫好這一段。")
-    case = await repo.update(case_id, notes=body.body.strip(), answer=reading,
+    case = await repo.update(case_id, notes=body.body.strip(), answer=reading, answer_html=html_,
+                             reading_draft=html_,
                              status=CaseStatus.answered, answered_at=now_ms(),
                              answered_by=master.get("email", ""), revision=case.revision + 1)
     await hub.to_user(case.token, {"type": "answer_ready"})
     await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
     return {"ok": True, "reading": reading, "revision": case.revision}
+
+
+@router.put("/api/master/cases/{case_id}/reading")
+async def api_edit_reading(case_id: str, body: AnswerIn, master: dict = Depends(require_master_api)):
+    """已送出後直接修改【解讀】：不必收回，問事者頁面會即時更新。"""
+    repo = get_repo()
+    case = await repo.get(case_id)
+    if not case:
+        raise HTTPException(404)
+    if case.status != CaseStatus.answered:
+        raise HTTPException(409, "此字尚未送出，請用「送出解讀」")
+    reading, html_ = _reading_of(body)
+    if not reading:
+        raise HTTPException(422, "【解讀】是空的。問事者只會看到【解讀】，請先寫好內容。")
+    case = await repo.update(case_id, notes=body.body.strip(), answer=reading, answer_html=html_,
+                             reading_draft=html_, reading_edited_at=now_ms())
+    await hub.to_user(case.token, {"type": "answer_ready"})
+    await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
+    return {"ok": True, "reading": reading}
 
 
 @router.post("/api/master/cases/{case_id}/retract")
@@ -240,7 +276,10 @@ async def api_notes(case_id: str, body: NotesIn, master: dict = Depends(require_
     repo = get_repo()
     if not await repo.get(case_id):
         raise HTTPException(404)
-    await repo.update(case_id, notes=body.body)
+    fields = {"notes": body.body}
+    if body.reading_html is not None:
+        fields["reading_draft"] = sanitize_html(body.reading_html)
+    await repo.update(case_id, **fields)
     return {"ok": True}
 
 

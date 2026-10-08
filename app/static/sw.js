@@ -42,6 +42,16 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // CSS / JS：先走網路（確保拿到最新版），離線才用快取
+  if (/\.(css|js)$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; })
+        .catch(async () => (await caches.match(req)) || Response.error())
+    );
+    return;
+  }
+
   if (url.pathname.startsWith("/static/") || url.pathname === "/manifest.webmanifest") {
     event.respondWith(
       caches.open(CACHE).then(async (c) => {

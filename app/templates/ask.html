@@ -83,5 +83,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-{% if not need_login %}<script type="module" src="/static/js/ask.js"></script>{% endif %}
+{% if not need_login %}<script type="module" src="/static/js/ask.js?v={{ asset_v }}"></script>{% endif %}
 {% endblock %}

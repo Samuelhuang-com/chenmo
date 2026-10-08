@@ -19,8 +19,8 @@
   {% if case.status.value == "answered" %}
   <section class="paper">
     <h2>老師解讀</h2>
-    <div class="answer">{{ case.answer }}</div>
-    <p class="answer-sign">解於 {{ case.answered_at | fmt_ms }}</p>
+    {% if case.answer_html %}<div class="answer rich">{{ case.answer_html | safe }}</div>{% else %}<div class="answer">{{ case.answer }}</div>{% endif %}
+    <p class="answer-sign">解於 {{ case.answered_at | fmt_ms }}{% if case.reading_edited_at %}（老師於 {{ case.reading_edited_at | fmt_ms }} 更新）{% endif %}</p>
   </section>
   {% include "_sponsor.html" %}
   {% elif case.status.value == "submitted" and case.rewrite_requested_at %}

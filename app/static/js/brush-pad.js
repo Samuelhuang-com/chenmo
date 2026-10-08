@@ -16,6 +16,10 @@ export class BrushPad {
     canvas.addEventListener("pointerup", e => this._up(e));
     canvas.addEventListener("pointercancel", e => this._up(e));
     canvas.addEventListener("contextmenu", e => e.preventDefault());
+    // 書寫中不讓頁面跟著手指捲動、下拉（iOS 會忽略 touch-action，要在這裡擋）
+    const stop = e => { if (this.cur || this.enabled) e.preventDefault(); };
+    canvas.addEventListener("touchstart", stop, { passive: false });
+    canvas.addEventListener("touchmove", stop, { passive: false });
     new ResizeObserver(() => this.redraw()).observe(canvas);
     this.flusher = setInterval(() => this._flush(), 50);
     this.redraw();
@@ -31,7 +35,8 @@ export class BrushPad {
     ];
   }
   _down(e) {
-    if (this.cur || !this.enabled) return;
+    if (this.cur) return;
+    if (!this.enabled) { this.cb.onBlocked?.(); return; }
     e.preventDefault();
     this.c.setPointerCapture(e.pointerId);
     this.cb.onFirstTouch?.();

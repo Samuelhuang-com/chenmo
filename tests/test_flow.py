@@ -554,3 +554,52 @@ def test_anonymous_case_keep_and_claim(monkeypatch):
     o = TestClient(app); o.get("/me/login?next=/me")
     o.get(f"/c/{token}?claim=1")
     assert "未登入問的" not in o.get("/me").text
+
+
+def test_edit_reading_after_sent():
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+    token = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    stu.post(f"/api/cases/{token}/submit", json={"question": "問", "char": "考", **PROFILE})
+    cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    # 還沒送出不能用更新
+    assert master.put(f"/api/master/cases/{cid}/reading", json={"body": "【解讀】\n甲"}).status_code == 409
+    master.post(f"/api/master/cases/{cid}/answer", json={"body": "【此字】\n考\n\n【解讀】\n這個字像老人拄杖，先穩一點。"})
+    assert "先穩一點" in stu.get(f"/c/{token}").text
+    # 直接修改，不必收回；字資料部分不外流
+    r = master.put(f"/api/master/cases/{cid}/reading", json={"body": "【此字】\n私人筆記\n\n【解讀】\n改成更白話：慢慢來，不用急。"})
+    assert r.status_code == 200
+    page = stu.get(f"/c/{token}").text
+    assert "慢慢來，不用急" in page and "先穩一點" not in page and "私人筆記" not in page and "更新" in page
+    assert master.put(f"/api/master/cases/{cid}/reading", json={"body": "【解讀】\n"}).status_code == 422
+
+
+def test_rich_reading_sanitized_and_shown():
+    from app.services.richtext import sanitize_html, html_to_text
+    dirty = '<p onclick="x()">好<script>alert(1)</script><b>字</b><img src=x onerror=1></p><span style="color:red;background:url(javascript:1)">紅</span>'
+    clean = sanitize_html(dirty)
+    assert "script" not in clean and "onerror" not in clean and "onclick" not in clean and "url(" not in clean
+    assert "<b>字</b>" in clean and "color:red" in clean
+    assert html_to_text("<p>甲</p><p>乙<br>丙</p><ul><li>丁</li></ul>") == "甲\n\n乙\n丙\n\n・丁"
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+    token = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    stu.post(f"/api/cases/{token}/submit", json={"question": "問", "char": "考", **PROFILE})
+    cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    r = master.post(f"/api/master/cases/{cid}/answer", json={"body": "資料\n\n【解讀】\n舊", "reading_html": dirty})
+    assert r.status_code == 200
+    page = stu.get(f"/c/{token}").text
+    assert "<b>字</b>" in page and "alert(1)" not in page and "onerror" not in page
+    c = master.get(f"/api/master/cases/{cid}").json()["case"]
+    assert "字" in c["answer"] and "<" not in c["answer"]
+    # 工作台載入：編輯器帶入已存的 HTML
+    assert "<b>字</b>" in master.get(f"/master/case/{cid}").text
+    # 空內容不能送出
+    r = master.put(f"/api/master/cases/{cid}/reading", json={"body": "資料", "reading_html": "<p><br></p>"})
+    assert r.status_code == 422

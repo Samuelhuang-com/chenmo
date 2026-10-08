@@ -8,7 +8,11 @@ from app.config import get_settings
 TPE = timezone(timedelta(hours=8))
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+import os
+
 templates.env.globals["settings"] = get_settings()
+# 靜態檔網址帶版本，部署後一定拿到新的 CSS/JS（Cloud Run 每次部署會換 K_REVISION）
+templates.env.globals["asset_v"] = os.environ.get("K_REVISION") or str(int(__import__("time").time()))
 
 
 def fmt_ms(ms: int | None) -> str:
