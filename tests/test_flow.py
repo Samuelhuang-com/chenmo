@@ -414,8 +414,12 @@ def test_sponsor_box(monkeypatch):
     monkeypatch.setattr(get_settings(), "sponsor_line_url", "https://line.me/R/xxx")
     assert "請老師喝杯咖啡" not in client.get(f"/c/{token}").text           # 尚未解讀不顯示
     master.post(f"/api/master/cases/{case_id}/answer", json={"body": "【解讀】\n好"})
+    assert "請老師喝杯咖啡" not in client.get(f"/c/{token}").text           # 老師沒開就不顯示
+    assert master.put(f"/api/master/cases/{case_id}/sponsor", json={"show": True}).json()["show"] is True
     page = client.get(f"/c/{token}").text
     assert "請老師喝杯咖啡" in page and "https://line.me/R/xxx" in page
+    master.put(f"/api/master/cases/{case_id}/sponsor", json={"show": False})
+    assert "請老師喝杯咖啡" not in client.get(f"/c/{token}").text
 
 
 def test_sqlite_list_by_owner(tmp_path):
@@ -653,9 +657,66 @@ def test_sponsor_bank_box(monkeypatch):
     cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
     master.post(f"/api/master/cases/{cid}/answer", json={"body": "【解讀】\n好", "reading_html": "<p>好</p>"})
     assert "銀行轉帳" not in stu.get(f"/c/{token}").text
+    master.put(f"/api/master/cases/{cid}/sponsor", json={"show": True})
     s = get_settings()
     monkeypatch.setattr(s, "sponsor_bank_name", "測試銀行")
     monkeypatch.setattr(s, "sponsor_bank_code", "123")
     monkeypatch.setattr(s, "sponsor_bank_account", "9876543210")
     page = stu.get(f"/c/{token}").text
     assert "銀行轉帳" in page and "測試銀行（123）" in page and "9876543210" in page and 'id="bank-copy"' in page
+
+
+def test_email_student_on_answer(monkeypatch):
+    import smtplib
+    from app.config import get_settings
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout=None): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def starttls(self): pass
+        def login(self, u, p): pass
+        def send_message(self, m): sent.append(m)
+
+    s = get_settings()
+    monkeypatch.setattr(smtplib, "SMTP", FakeSMTP)
+    monkeypatch.setattr(s, "smtp_user", "teacher@gmail.com")
+    monkeypatch.setattr(s, "smtp_password", "pw")
+    monkeypatch.setattr(s, "notify_emails", "t@x.com")
+    monkeypatch.setattr(s, "site_url", "https://chenmo.example")
+    _fake_google(monkeypatch, "stu@gmail.com", "小明")
+    master = TestClient(app); login(master)
+
+    def make(client_):
+        token = client_.post("/api/cases").json()["token"]
+        with client_.websocket_connect(f"/ws/user/{token}") as ws:
+            stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+            ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+        client_.post(f"/api/cases/{token}/submit", json={"question": "問工作", "char": "工", **PROFILE})
+        cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+        return token, cid
+
+    st = TestClient(app); st.get("/me/login?next=/ask")
+    token, cid = make(st)
+    # 工作台只對有登入的問事者顯示寄信選項
+    assert 'id="email-student"' in master.get(f"/master/case/{cid}").text
+    sent.clear()
+    # 沒勾：不寄
+    r = master.post(f"/api/master/cases/{cid}/answer", json={"body": "【解讀】\n好", "reading_html": "<p>好</p>"}).json()
+    assert r["emailed"] is None and not sent
+    master.post(f"/api/master/cases/{cid}/retract")
+    # 勾了：寄給問事者，信中有他的連結
+    r = master.post(f"/api/master/cases/{cid}/answer",
+                    json={"body": "【解讀】\n好", "reading_html": "<p>好</p>", "email_student": True}).json()
+    assert r["emailed"] is True and r["email_to"] == "stu@gmail.com"
+    msg = sent[-1]
+    assert msg["To"] == "stu@gmail.com" and "工" in msg["Subject"]
+    assert f"https://chenmo.example/c/{token}" in msg.get_body(preferencelist=("plain",)).get_content()
+    # 沒登入的問事者：沒有寄信選項，即使要求寄也只回報原因
+    anon = TestClient(app)
+    t2, c2 = make(anon)
+    assert 'id="email-student"' not in master.get(f"/master/case/{c2}").text
+    r = master.post(f"/api/master/cases/{c2}/answer",
+                    json={"body": "【解讀】\n好", "reading_html": "<p>好</p>", "email_student": True}).json()
+    assert r["emailed"] is False and "沒有登入" in r["email_note"]

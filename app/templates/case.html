@@ -31,7 +31,7 @@
     </div>
   </section>
   {% endif %}
-  {% include "_sponsor.html" %}
+  {% if case.show_sponsor %}{% include "_sponsor.html" %}{% endif %}
   {% elif case.status.value == "submitted" and case.rewrite_requested_at %}
   <section class="paper redo-note" id="waiting">
     <h2>老師請你重寫這個字</h2>

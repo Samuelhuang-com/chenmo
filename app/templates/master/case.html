@@ -122,6 +122,8 @@
         <p class="hint" id="share-state" aria-live="polite"></p>
       </div>
 
+      <label class="email-opt" id="sponsor-opt"><input type="checkbox" id="sponsor-toggle" {% if case.show_sponsor %}checked{% endif %}> 在這位問事者的頁面顯示「請老師喝杯咖啡」（預設不顯示，勾選後即時生效）<span class="hint" id="sponsor-state" role="status"></span></label>
+      {% if case.owner_email %}<label class="email-opt" id="email-opt"><input type="checkbox" id="email-student" checked> 送出時同時寄信給問事者（{{ case.owner_email }}），信中附他的連結</label>{% endif %}
       <div class="submit-row">
         <span class="conn" id="sent-info">{% if case.status.value == "answered" %}第 {{ case.revision }} 次送出，{{ case.answered_at | fmt_ms }}{% if case.reading_edited_at %}，已更新{% endif %}{% endif %}</span>
         <span class="actions">

@@ -54,6 +54,7 @@ class Case(BaseModel):
     draft_char: str = ""
     rewrite_requested_at: int | None = None   # 老師請問事者重寫的時間
     rewrite_reason: str = ""             # 重寫原因（會顯示給問事者）
+    show_sponsor: bool = False           # 老師決定是否在此問事者的頁面顯示「請老師喝杯咖啡」
     redo_of: str = ""                    # 重寫時，指向被取代的舊案件 token
 
     @computed_field
@@ -155,6 +156,11 @@ class JieziIn(BaseModel):
 class AnswerIn(BaseModel):
     body: str = Field(min_length=1, max_length=20000)   # 老師的完整解字稿
     reading_html: str | None = Field(default=None, max_length=40000)   # 【解讀】編輯器的 HTML
+    email_student: bool = False          # 送出後是否寄信通知問事者（需問事者有登入）
+
+
+class SponsorIn(BaseModel):
+    show: bool
 
 
 class NotesIn(BaseModel):

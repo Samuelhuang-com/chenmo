@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 
 from app.auth import SESSION_KEY, STUDENT_KEY, get_oauth, require_master_api, require_master_page
 from app.config import get_settings
-from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, RewriteIn, now_ms
+from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, RewriteIn, SponsorIn, now_ms
 from app.services.richtext import html_to_text, sanitize_html, text_to_html
 from app.services.sections import public_reading
 from app.services.jiezi import compose
@@ -185,7 +185,7 @@ def _reading_of(body: AnswerIn) -> tuple[str, str]:
 
 
 @router.post("/api/master/cases/{case_id}/answer")
-async def api_answer(case_id: str, body: AnswerIn, master: dict = Depends(require_master_api)):
+async def api_answer(case_id: str, body: AnswerIn, request: Request, master: dict = Depends(require_master_api)):
     """送出（或重送）解字。問事者只會收到【解讀】段落，其餘段落留在老師的解字稿。"""
     repo = get_repo()
     case = await repo.get(case_id)
@@ -204,7 +204,26 @@ async def api_answer(case_id: str, body: AnswerIn, master: dict = Depends(requir
                              answered_by=master.get("email", ""), revision=case.revision + 1)
     await hub.to_user(case.token, {"type": "answer_ready"})
     await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
-    return {"ok": True, "reading": reading, "revision": case.revision}
+    emailed, email_note = None, ""
+    if body.email_student:
+        from app.services.notify import notify_student_answered
+        emailed, email_note = await notify_student_answered(case, str(request.base_url))   # 失敗不影響送出
+    return {"ok": True, "reading": reading, "revision": case.revision,
+            "emailed": emailed, "email_note": email_note, "email_to": case.owner_email}
+
+
+@router.put("/api/master/cases/{case_id}/sponsor")
+async def api_set_sponsor(case_id: str, body: SponsorIn, master: dict = Depends(require_master_api)):
+    """老師決定：是否在這位問事者的頁面顯示「請老師喝杯咖啡」贊助區塊（預設不顯示）。"""
+    repo = get_repo()
+    case = await repo.get(case_id)
+    if not case:
+        raise HTTPException(404)
+    case = await repo.update(case_id, show_sponsor=body.show)
+    if case.status == CaseStatus.answered:
+        await hub.to_user(case.token, {"type": "answer_ready"})   # 問事者頁面即時更新
+    await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
+    return {"ok": True, "show": case.show_sponsor}
 
 
 @router.put("/api/master/cases/{case_id}/reading")

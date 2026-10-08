@@ -84,3 +84,44 @@ async def notify_new_case(case: Case, base_url: str) -> bool:
     except Exception:  # noqa: BLE001
         log.exception("new-case email failed")
         return False
+
+
+def build_student_message(case: Case, link: str) -> EmailMessage:
+    s = get_settings()
+    char = case.char or ""
+    msg = EmailMessage()
+    msg["Subject"] = f"【{s.app_name}】老師已完成「{char}」字的解讀"
+    msg["From"] = f"{s.app_name} <{s.smtp_user}>"
+    msg["To"] = case.owner_email
+    name = case.owner_name or "你好"
+    msg.set_content("\n".join([
+        f"{name}，", "", f"你在{s.app_name}問的「{case.question}」，老師已經解讀好了。",
+        "點下面的連結就能看到你寫的字和老師的解讀：", "", link, "",
+        "這個連結請自己保存，也可以登入後在「我的問字」找到。"]))
+    msg.add_alternative(f"""\
+<div style="font-family:'Noto Serif TC',serif;background:#ede5d3;color:#1f1b17;padding:24px;max-width:560px">
+  <div style="font-size:56px;line-height:1;margin-bottom:12px">{escape(char)}</div>
+  <p>{escape(name)}，</p>
+  <p>你在{escape(s.app_name)}問的「{escape(case.question)}」，老師已經解讀好了。<br>點下面的按鈕，就能看到你寫的字和老師的解讀。</p>
+  <p style="margin-top:24px"><a href="{escape(link)}"
+     style="background:#b23a2e;color:#ede5d3;padding:10px 22px;text-decoration:none;letter-spacing:.2em">查看解讀</a></p>
+  <p style="color:#6b625a;font-size:13px;margin-top:24px">按鈕打不開時，請複製這個連結：<br>{escape(link)}<br>也可以登入後在「我的問字」找到。</p>
+</div>""", subtype="html")
+    return msg
+
+
+async def notify_student_answered(case: Case, base_url: str) -> tuple[bool, str]:
+    """寄信給有登入的問事者（附問事者連結）。回傳（是否寄出, 沒寄出的原因）。"""
+    s = get_settings()
+    if not case.owner_email:
+        return False, "問事者沒有登入，沒有信箱可寄"
+    if not (s.smtp_user and s.smtp_password):
+        return False, "尚未設定 SMTP，無法寄信"
+    link = f"{(s.site_url or base_url).rstrip('/')}/c/{case.token}"
+    try:
+        await asyncio.wait_for(asyncio.to_thread(_send, build_student_message(case, link)), timeout=10)
+        log.info("answer email sent to student %s", case.owner_email)
+        return True, ""
+    except Exception as e:  # noqa: BLE001
+        log.exception("answer email to student failed")
+        return False, f"寄信失敗：{type(e).__name__}"

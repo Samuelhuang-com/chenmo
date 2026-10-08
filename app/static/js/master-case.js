@@ -296,13 +296,16 @@ $("send").onclick = async () => {
   clearTimeout(saveTimer);
   try {
     const r = await fetch(`/api/master/cases/${caseId}/answer`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, reading_html: readingHtml() }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, reading_html: readingHtml(), email_student: !!$("email-student")?.checked }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(errText(d, "送出失敗"));
     revision = d.revision;
     setStatus("answered", { revision: d.revision, answered_at: Date.now() });
-    $("save-state").textContent = "已送出，問事者頁面已更新。之後還可以直接修改並按「更新解讀」。";
+    let note = "已送出，問事者頁面已更新。之後還可以直接修改並按「更新解讀」。";
+    if (d.emailed === true) note += ` 已寄信給 ${d.email_to}。`;
+    else if (d.emailed === false) note += ` 但信沒有寄出：${d.email_note}。可以用上方的連結自己傳給他。`;
+    $("save-state").textContent = note;
   } catch (e) {
     $("error").textContent = e.message;
     $("send").disabled = caseStatus !== "submitted";
@@ -427,3 +430,19 @@ $("share-copy").onclick = () => copyText(shareUrl, "已複製連結。");
 $("share-copy-msg").onclick = () => copyText(
   `您好，您在辰墨軒問的字，老師已經解讀完成了。\n請點下面的連結查看您寫的字和老師的解讀：\n${shareUrl}`,
   "已複製通知訊息，可以直接貼到 LINE 或簡訊。");
+
+// ---- 是否在問事者頁面顯示贊助區塊 ----
+$("sponsor-toggle")?.addEventListener("change", async (e) => {
+  const box = e.target, st = $("sponsor-state");
+  st.textContent = "";
+  try {
+    const r = await fetch(`/api/master/cases/${caseId}/sponsor`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ show: box.checked }),
+    });
+    if (!r.ok) throw new Error();
+    st.textContent = box.checked ? " 已設為顯示" : " 已設為不顯示";
+  } catch {
+    box.checked = !box.checked;
+    st.textContent = " 設定失敗，請再試一次";
+  }
+});

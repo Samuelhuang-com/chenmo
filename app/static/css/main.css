@@ -413,3 +413,6 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .bank-title { font-weight: 600; margin-bottom: 6px !important; }
 .bank-line { margin: 0 auto 6px !important; color: inherit !important; }
 .bank-acct { font-size: 1.15em; letter-spacing: .08em; user-select: all; font-variant-numeric: tabular-nums; }
+
+.email-opt { display: flex; gap: 8px; align-items: flex-start; font-size: var(--step--1); color: var(--mo-soft); margin: 12px 0 4px; cursor: pointer; }
+.email-opt input { margin-top: .3em; }
