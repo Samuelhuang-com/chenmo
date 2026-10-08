@@ -261,3 +261,60 @@ def test_pick_char_flow():
     j = master.post(f"/api/master/cases/{case_id}/jiezi", json={"char": s1[3]}).json()
     assert "此字為學生自選" in j["sections"]["此字"] and "沒有筆跡" not in j["sections"]["此字"]
     assert "自選字" in client.get(f"/c/{token}").text
+
+
+def test_email_on_submit(monkeypatch):
+    import smtplib
+    from app.config import get_settings
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout=None):
+            sent.append(("connect", host, port))
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def starttls(self): sent.append(("tls",))
+        def login(self, u, p): sent.append(("login", u))
+        def send_message(self, m): sent.append(("msg", m))
+
+    s = get_settings()
+    monkeypatch.setattr(smtplib, "SMTP", FakeSMTP)
+    monkeypatch.setattr(s, "smtp_user", "teacher@gmail.com")
+    monkeypatch.setattr(s, "smtp_password", "app-pass")
+    monkeypatch.setattr(s, "notify_emails", "a@x.com,b@x.com")
+    monkeypatch.setattr(s, "site_url", "https://chenmo.example")
+
+    token = client.post("/api/cases").json()["token"]
+    with client.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    r = client.post(f"/api/cases/{token}/submit",
+                    json={"question": "明年換工作好嗎？", "char": "行", **PROFILE})
+    assert r.status_code == 200
+    msg = next(x[1] for x in sent if x[0] == "msg")
+    assert ("connect", "smtp.gmail.com", 587) in sent and ("tls",) in sent
+    assert "新問字「行」" in msg["Subject"] and "民國 75 年次" in msg["Subject"]
+    assert msg["To"] == "a@x.com, b@x.com"
+    text = msg.get_body(preferencelist=("plain",)).get_content()
+    assert "明年換工作好嗎？" in text and "https://chenmo.example/master/case/" in text
+
+
+def test_email_failure_does_not_block_submit(monkeypatch):
+    import smtplib
+    from app.config import get_settings
+
+    class BrokenSMTP:
+        def __init__(self, *a, **k): raise OSError("network down")
+
+    s = get_settings()
+    monkeypatch.setattr(smtplib, "SMTP", BrokenSMTP)
+    monkeypatch.setattr(s, "smtp_user", "teacher@gmail.com")
+    monkeypatch.setattr(s, "smtp_password", "app-pass")
+    monkeypatch.setattr(s, "notify_emails", "a@x.com")
+    assert s.email_enabled
+    token = client.post("/api/cases").json()["token"]
+    with client.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    r = client.post(f"/api/cases/{token}/submit", json={"question": "問", **PROFILE})
+    assert r.status_code == 200

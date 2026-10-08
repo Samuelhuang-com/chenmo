@@ -1,6 +1,7 @@
 """應用程式設定：從環境變數 / .env 讀取。"""
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,16 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-5-5"
 
+    # 新問字 Email 通知（Gmail：SMTP_USER 填信箱，SMTP_PASSWORD 填「應用程式密碼」）
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    # 收件人，逗號分隔；留空則寄給 MASTER_EMAILS
+    notify_emails: str = ""
+    # 信中連結使用的網址（留空則用目前請求的網址）
+    site_url: str | None = None
+
     # 限制
     question_max_chars: int = 100
     max_strokes: int = 80
@@ -45,6 +56,21 @@ class Settings(BaseSettings):
     @property
     def master_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.master_emails.split(",") if e.strip()}
+
+    @field_validator("smtp_password")
+    @classmethod
+    def _strip_spaces(cls, v: str | None) -> str | None:
+        # Gmail 應用程式密碼顯示為「xxxx xxxx xxxx xxxx」，登入時要去掉空白
+        return v.replace(" ", "").strip() if v else v
+
+    @property
+    def notify_recipients(self) -> list[str]:
+        raw = self.notify_emails or self.master_emails
+        return [e.strip() for e in raw.split(",") if e.strip()]
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_user and self.smtp_password and self.notify_recipients)
 
     @property
     def google_login_enabled(self) -> bool:

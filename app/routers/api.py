@@ -42,7 +42,7 @@ async def pick_set():
 
 
 @router.post("/cases/{token}/submit")
-async def submit_case(token: str, body: SubmitIn):
+async def submit_case(token: str, body: SubmitIn, request: Request):
     repo = get_repo()
     case = await repo.get_by_token(token)
     if not case:
@@ -63,4 +63,6 @@ async def submit_case(token: str, body: SubmitIn):
                              birth_year=body.birth_year, gender=body.gender,
                              status=CaseStatus.submitted, submitted_at=now_ms())
     await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
+    from app.services.notify import notify_new_case
+    await notify_new_case(case, str(request.base_url))   # 失敗不影響送出
     return {"ok": True, "url": f"/c/{case.token}"}
