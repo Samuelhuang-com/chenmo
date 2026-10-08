@@ -10,6 +10,7 @@ export class BrushPad {
     this.buffer = [];
     this.seq = 0;
     this.raf = 0;
+    this.enabled = true;          // false 時不接受書寫（手指滑動交給頁面捲動）
     canvas.addEventListener("pointerdown", e => this._down(e));
     canvas.addEventListener("pointermove", e => this._move(e));
     canvas.addEventListener("pointerup", e => this._up(e));
@@ -30,7 +31,7 @@ export class BrushPad {
     ];
   }
   _down(e) {
-    if (this.cur) return;
+    if (this.cur || !this.enabled) return;
     e.preventDefault();
     this.c.setPointerCapture(e.pointerId);
     this.cb.onFirstTouch?.();

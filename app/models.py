@@ -49,6 +49,9 @@ class Case(BaseModel):
     retracted_at: int | None = None
     draft: str = ""                      # 系統帶出的解字草稿（快取，避免重複呼叫 AI）
     draft_char: str = ""
+    rewrite_requested_at: int | None = None   # 老師請問事者重寫的時間
+    rewrite_reason: str = ""             # 重寫原因（會顯示給問事者）
+    redo_of: str = ""                    # 重寫時，指向被取代的舊案件 token
 
     @computed_field
     @property
@@ -66,7 +69,8 @@ class Case(BaseModel):
         return self.model_dump(include={"token", "question", "char", "char_source", "birth_year",
                                         "gender", "profile_text",
                                         "status", "stroke_count",
-                                        "created_at", "submitted_at", "answered_at", "answer"})
+                                        "created_at", "submitted_at", "answered_at", "answer",
+                                        "rewrite_requested_at", "rewrite_reason"})
 
 
 ZODIAC = "鼠牛虎兔龍蛇馬羊猴雞狗豬"
@@ -125,6 +129,10 @@ class SubmitIn(BaseModel):
         if code_point_len(v) > 1:
             raise ValueError("請只填一個字")
         return v
+
+
+class RewriteIn(BaseModel):
+    reason: str = Field(default="", max_length=200)
 
 
 class JieziIn(BaseModel):

@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 
 from app.auth import SESSION_KEY, STUDENT_KEY, get_oauth, require_master_api, require_master_page
 from app.config import get_settings
-from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, now_ms
+from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, RewriteIn, now_ms
 from app.services.sections import public_reading
 from app.services.jiezi import compose
 from app.repositories import get_repo
@@ -201,6 +201,36 @@ async def api_retract(case_id: str, master: dict = Depends(require_master_api)):
     case = await repo.update(case_id, status=CaseStatus.submitted, retracted_at=now_ms())
     await hub.to_user(case.token, {"type": "answer_retracted"})
     await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
+    return {"ok": True}
+
+
+@router.post("/api/master/cases/{case_id}/request_rewrite")
+async def api_request_rewrite(case_id: str, body: RewriteIn, master: dict = Depends(require_master_api)):
+    """請問事者重寫：問事者的結果頁會出現「請重寫」與重新書寫按鈕。"""
+    repo = get_repo()
+    case = await repo.get(case_id)
+    if not case:
+        raise HTTPException(404)
+    if case.status == CaseStatus.drafting:
+        raise HTTPException(409, "問事者還在書寫中，尚未送出")
+    if case.status == CaseStatus.answered:
+        raise HTTPException(409, "此字已解讀送出。要請對方重寫，請先按「收回」")
+    case = await repo.update(case_id, rewrite_requested_at=now_ms(), rewrite_reason=body.reason.strip())
+    await hub.to_user(case.token, {"type": "rewrite_requested"})
+    await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
+    return {"ok": True}
+
+
+@router.delete("/api/master/cases/{case_id}")
+async def api_delete(case_id: str, master: dict = Depends(require_master_api)):
+    """刪除這一筆（含筆跡紀錄），無法復原。"""
+    repo = get_repo()
+    case = await repo.get(case_id)
+    if not case:
+        raise HTTPException(404)
+    await repo.delete(case_id)
+    await hub.to_user(case.token, {"type": "case_deleted"})
+    await hub.to_masters({"type": "case_deleted", "case_id": case_id})
     return {"ok": True}
 
 

@@ -482,3 +482,75 @@ def test_teacher_logs_in_from_front_door(monkeypatch):
     s2.get("/me/login?next=/me")
     assert s2.get("/?source=pwa", follow_redirects=False).status_code == 200
     assert 'class="nav-master"' not in s2.get("/").text
+
+
+def test_rewrite_request_and_delete():
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+
+    def make(q):
+        token = stu.post("/api/cases").json()["token"]
+        with stu.websocket_connect(f"/ws/user/{token}") as ws:
+            stroke(ws, 1, [[0.2, 0.2, 0], [0.3, 0.2, 40]])
+            ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+        assert stu.post(f"/api/cases/{token}/submit", json={"question": q, "char": "字", **PROFILE}).status_code == 200
+        cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+        return token, cid
+
+    token, cid = make("寫太小")
+    # 請重寫：學生頁出現提示與按鈕
+    assert master.post(f"/api/master/cases/{cid}/request_rewrite", json={"reason": "請寫大一點"}).status_code == 200
+    page = stu.get(f"/c/{token}").text
+    assert "老師請你重寫這個字" in page and "請寫大一點" in page and f"/ask?redo={token}" in page
+    assert "請寫大一點" in stu.get(f"/ask?redo={token}").text
+    # 重寫並送出：舊的被取代
+    new = stu.post("/api/cases", json={"redo_of": token}).json()["token"]
+    with stu.websocket_connect(f"/ws/user/{new}") as ws:
+        stroke(ws, 1, [[0.1, 0.1, 0], [0.9, 0.9, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    assert stu.post(f"/api/cases/{new}/submit", json={"question": "寫太小", "char": "字", **PROFILE}).status_code == 200
+    assert stu.get(f"/c/{token}").status_code == 404
+    ids = [c["token"] for c in master.get("/api/master/cases").json()["cases"]]
+    assert new in ids and token not in ids
+    # 未請求重寫的案件，redo_of 不會刪到它
+    other, ocid = make("別人的")
+    n2 = stu.post("/api/cases", json={"redo_of": other}).json()["token"]
+    with stu.websocket_connect(f"/ws/user/{n2}") as ws:
+        stroke(ws, 1, [[0.1, 0.1, 0], [0.9, 0.9, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    stu.post(f"/api/cases/{n2}/submit", json={"question": "x", "char": "字", **PROFILE})
+    assert stu.get(f"/c/{other}").status_code == 200
+    # 已解不能直接請重寫；刪除
+    master.post(f"/api/master/cases/{ocid}/answer", json={"body": "【解讀】\n好"})
+    assert master.post(f"/api/master/cases/{ocid}/request_rewrite", json={}).status_code == 409
+    assert master.delete(f"/api/master/cases/{ocid}").status_code == 200
+    assert stu.get(f"/c/{other}").status_code == 404
+    assert master.delete(f"/api/master/cases/{ocid}").status_code == 404
+    # 沒登入老師不能刪
+    assert TestClient(app).delete(f"/api/master/cases/{ocid}").status_code in (401, 303, 403)
+
+
+def test_anonymous_case_keep_and_claim(monkeypatch):
+    anon = TestClient(app)
+    token = anon.post("/api/cases").json()["token"]
+    with anon.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    anon.post(f"/api/cases/{token}/submit", json={"question": "未登入問的", "char": "考", **PROFILE})
+    page = anon.get(f"/c/{token}").text
+    assert "請保存這個頁面" in page and "複製連結" in page
+    # 登入後認領
+    _fake_google(monkeypatch, "claimer@gmail.com", "認領者")
+    from app.config import get_settings
+    st = TestClient(app)
+    assert "登入並收進我的問字" in st.get(f"/c/{token}").text
+    st.get("/me/login?next=/me")
+    assert "收進我的問字" in st.get(f"/c/{token}").text and "未登入問的" not in st.get("/me").text
+    r = st.get(f"/c/{token}?claim=1").text
+    assert "已收進你的" in r and "請保存這個頁面" not in r
+    assert "未登入問的" in st.get("/me").text
+    # 已有主人的不能被別人認領
+    _fake_google(monkeypatch, "other2@gmail.com", "乙")
+    o = TestClient(app); o.get("/me/login?next=/me")
+    o.get(f"/c/{token}?claim=1")
+    assert "未登入問的" not in o.get("/me").text

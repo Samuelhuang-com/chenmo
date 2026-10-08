@@ -56,6 +56,7 @@ function setStatus(s, c = null) {
   $("send").disabled = s !== "submitted";
   $("send").textContent = revision ? "重送解讀" : "送出解讀";
   $("retract").hidden = s !== "answered";
+  $("rewrite").hidden = s !== "submitted";
   $("answer").readOnly = s === "answered";
   $("jiezi-run").disabled = s === "answered";
   if (s === "answered") {
@@ -145,11 +146,13 @@ function showPick(c) {
 const liveStrokes = new Map();
 new Socket("/ws/master", msg => {
   if (msg.type === "case_update" && msg.case.id === caseId) {
+    if (msg.case.rewrite_requested_at) $("rewrite-state").textContent = "已請問事者重寫，等待新的字。";
     if (!$("jiezi-char").value && msg.case.char) $("jiezi-char").value = msg.case.char;
     if (msg.case.profile_text) $("profile").textContent = msg.case.profile_text;
     showPick(msg.case);
     return setStatus(msg.case.status, msg.case);
   }
+  if (msg.type === "case_deleted" && msg.case_id === caseId) { location.href = "/master"; return; }
   if (msg.case_id !== caseId) return;
   lastLive = Date.now();
   $("live-tag").textContent = "問事者正在書寫";
@@ -256,5 +259,37 @@ $("retract").onclick = async () => {
     $("error").textContent = e.message;
   } finally {
     $("retract").disabled = false;
+  }
+};
+
+// ---- 請問事者重寫／刪除 ----
+$("rewrite").onclick = async () => {
+  $("error2").textContent = "";
+  $("rewrite").disabled = true;
+  try {
+    const r = await fetch(`/api/master/cases/${caseId}/request_rewrite`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: $("rewrite-reason").value }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(errText(d, "送出失敗"));
+    $("rewrite-state").textContent = "已請問事者重寫，等待新的字。新字送出後，這一筆會自動被取代。";
+  } catch (e) {
+    $("error2").textContent = e.message;
+  } finally {
+    $("rewrite").disabled = false;
+  }
+};
+
+$("delete-case").onclick = async () => {
+  if (!confirm("確定要刪除這一筆嗎？筆跡與解讀都會一併刪除，無法復原。")) return;
+  $("error2").textContent = "";
+  try {
+    const r = await fetch(`/api/master/cases/${caseId}`, { method: "DELETE" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(errText(d, "刪除失敗"));
+    location.href = "/master";
+  } catch (e) {
+    $("error2").textContent = e.message;
   }
 };

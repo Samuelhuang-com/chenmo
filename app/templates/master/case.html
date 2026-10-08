@@ -86,6 +86,18 @@
       </div>
       <p class="form-error" id="error" role="alert"></p>
     </section>
+
+    <section class="paper">
+      <h2>字不完整？</h2>
+      <p class="hint">筆跡看不清楚或沒寫完時，可以請問事者重寫；也可以直接刪掉這一筆。</p>
+      <p class="hint" id="rewrite-state">{% if case.rewrite_requested_at %}已請問事者重寫（{{ case.rewrite_requested_at | fmt_ms }}），等待新的字。{% endif %}</p>
+      <textarea id="rewrite-reason" rows="2" maxlength="200" placeholder="想對問事者說的話（選填），例如：字寫得太小，請寫大一點再試一次。"></textarea>
+      <div class="submit-row">
+        <button class="btn btn-danger" type="button" id="delete-case">刪除此筆</button>
+        <button class="btn" type="button" id="rewrite" {% if case.status.value != "submitted" %}hidden{% endif %}>請問事者重寫</button>
+      </div>
+      <p class="form-error" id="error2" role="alert"></p>
+    </section>
   </div>
 </div>
 {% endblock %}

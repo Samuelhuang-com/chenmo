@@ -39,6 +39,15 @@ class MemoryCaseRepository:
             self._cases[case_id] = updated
             return updated.model_copy()
 
+    async def delete(self, case_id: str) -> bool:
+        async with self._lock:
+            c = self._cases.pop(case_id, None)
+            if not c:
+                return False
+            self._by_token.pop(c.token, None)
+            self._events.pop(case_id, None)
+            return True
+
     async def list_cases(self, limit: int = 100, status: CaseStatus | None = None,
                          offset: int = 0) -> list[Case]:
         cases = [c for c in self._cases.values() if status is None or c.status == status]

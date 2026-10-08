@@ -21,15 +21,22 @@ async def index(request: Request, source: str = ""):
 
 
 @router.get("/ask")
-async def ask(request: Request):
+async def ask(request: Request, redo: str = ""):
     from app.auth import current_student
     from app.models import roc_year_now
     student = current_student(request)
     need_login = get_settings().student_login_effective and not student
+    redo_case = None
+    if redo:
+        old = await get_repo().get_by_token(redo)
+        if old and old.rewrite_requested_at and old.status.value == "submitted":
+            redo_case = {"token": old.token, "question": old.question, "birth_year": old.birth_year,
+                         "gender": old.gender, "reason": old.rewrite_reason}
     return templates.TemplateResponse(request, "ask.html",
                                       {"max_chars": get_settings().question_max_chars,
                                        "roc_now": roc_year_now(),
-                                       "student": student, "need_login": need_login})
+                                       "student": student, "need_login": need_login,
+                                       "redo": redo_case})
 
 
 @router.get("/me")
@@ -44,7 +51,7 @@ async def my_cases(request: Request):
 
 
 @router.get("/c/{token}")
-async def case_page(request: Request, token: str):
+async def case_page(request: Request, token: str, claim: str = ""):
     repo = get_repo()
     case = await repo.get_by_token(token)
     if not case:
@@ -52,9 +59,16 @@ async def case_page(request: Request, token: str):
     strokes = visible_strokes(await repo.list_events(case.id))
     from app.auth import current_student
     student = current_student(request)
+    claimed = False
+    # 沒登入時問的字，事後登入可以收進「我的問字」（只限還沒有主人的案件）
+    if claim and student and not case.owner_email and case.status.value != "drafting":
+        case = await repo.update(case.id, owner_email=student["email"], owner_name=student.get("name", ""))
+        claimed = True
     return templates.TemplateResponse(request, "case.html",
                                       {"case": case, "strokes": strokes, "student": student,
-                                       "is_owner": bool(student and student["email"] == case.owner_email)})
+                                       "is_owner": bool(student and student["email"] == case.owner_email),
+                                       "claimed": claimed,
+                                       "can_claim": bool(not case.owner_email and case.status.value != "drafting")})
 
 
 @router.get("/privacy")

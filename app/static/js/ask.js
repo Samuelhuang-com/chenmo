@@ -6,6 +6,7 @@ const q = $("question"), counter = $("counter"), err = $("error"), conn = $("con
 const MAX = parseInt(q.dataset.max, 10) || 100;
 
 let sock = null, creating = null, token = null;
+const redoNote = document.getElementById("redo-note");
 
 const STATE_TEXT = { connecting: "連線中…", open: "已與老師連線", closed: "連線中斷，重新連線中" };
 function onState(s) { conn.dataset.state = s; conn.textContent = STATE_TEXT[s] || ""; }
@@ -14,7 +15,7 @@ function showErr(m) { err.textContent = m || ""; }
 
 function ensureCase() {
   if (!creating) {
-    creating = fetch("/api/cases", { method: "POST" }).then(async r => {
+    creating = fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ redo_of: redoNote?.dataset.token || "" }) }).then(async r => {
       const d = await r.json().catch(() => ({}));
       if (r.status === 401) { location.href = "/me/login?next=/ask"; throw new Error("請先登入"); }
       if (!r.ok) throw new Error(d.detail || "暫時無法建立問事，請稍後再試");
@@ -123,6 +124,26 @@ $("pick-close").onclick = () => {
   $("pick-open").setAttribute("aria-expanded", "false");
 };
 
+// ---- 字格完整出現在畫面內，才開始接受書寫（避免捲動時誤觸畫到邊框） ----
+const padBox = $("pad-box");
+let fullyVisible = true;
+function applyPadLock() {
+  pad.enabled = fullyVisible || !!pad.cur;     // 已經下筆的這一筆要寫完
+  padBox.classList.toggle("locked", !pad.enabled);
+}
+if ("IntersectionObserver" in window) {
+  fullyVisible = false;
+  applyPadLock();
+  const steps = Array.from({ length: 51 }, (_, i) => i / 50);
+  new IntersectionObserver(([en]) => {
+    // 字格比螢幕還高時，放寬為「螢幕能容納的部分都在畫面內」
+    const need = Math.min(0.98, (innerHeight * 0.98) / Math.max(en.boundingClientRect.height, 1));
+    fullyVisible = en.intersectionRatio >= need;
+    applyPadLock();
+  }, { threshold: steps }).observe(padBox);
+  ["pointerup", "pointercancel"].forEach(t => $("pad").addEventListener(t, () => setTimeout(applyPadLock, 0)));
+}
+
 $("undo").onclick = () => pad.undo();
 $("clear").onclick = () => pad.clear();
 
@@ -161,3 +182,15 @@ $("submit").onclick = async () => {
     btn.disabled = false; btn.textContent = "呈送";
   }
 };
+
+// ---- 老師請重寫：帶入原本的問題、年次、性別 ----
+if (redoNote) {
+  const d = redoNote.dataset;
+  q.value = d.question || "";
+  q.dispatchEvent(new Event("input"));
+  if (d.birth) { byInput.value = d.birth; byInput.dispatchEvent(new Event("input")); }
+  if (d.gender) {
+    const r = document.querySelector(`input[name=gender][value="${d.gender}"]`);
+    if (r) { r.checked = true; r.dispatchEvent(new Event("change")); }
+  }
+}

@@ -2,7 +2,7 @@
 {% block title %}問字結果｜{{ settings.app_name }}{% endblock %}
 {% block main %}
 <div class="case-wrap">
-  {% if is_owner %}<p class="as-who"><a href="/me">回我的問字</a></p>{% endif %}
+  {% if is_owner %}<p class="as-who">{% if claimed %}已收進你的「我的問字」。{% endif %}<a href="/me">回我的問字</a></p>{% endif %}
   <section class="paper">
     <h2>所問</h2>
     <p class="case-q">{{ case.question or "（未填寫）" }}</p>
@@ -23,6 +23,12 @@
     <p class="answer-sign">解於 {{ case.answered_at | fmt_ms }}</p>
   </section>
   {% include "_sponsor.html" %}
+  {% elif case.status.value == "submitted" and case.rewrite_requested_at %}
+  <section class="paper redo-note" id="waiting">
+    <h2>老師請你重寫這個字</h2>
+    <p>{{ case.rewrite_reason or "上一次的字跡看不太清楚，請再寫一次。" }}</p>
+    <a class="btn btn-zhu" href="/ask?redo={{ case.token }}">重新書寫</a>
+  </section>
   {% elif case.status.value == "submitted" %}
   <section class="paper waiting" id="waiting">
     <div class="ink-drop" aria-hidden="true"></div>
@@ -34,6 +40,21 @@
     <p>此字尚未呈送。<a href="/ask">重新問字</a></p>
   </section>
   {% endif %}
+
+  {% if case.status.value != "drafting" and not is_owner %}
+  <section class="paper keep-box" id="keep-box">
+    <h2>請保存這個頁面</h2>
+    <p>你沒有登入，網站不知道你是誰。<b>關掉頁面後只能靠這個連結找回</b>老師的解讀，請先複製連結或加入書籤。</p>
+    <div class="keep-row">
+      <button class="btn" type="button" id="copy-link">複製連結</button>
+      {% if can_claim and settings.google_login_enabled %}
+        {% if student %}<a class="btn btn-zhu" href="/c/{{ case.token }}?claim=1">收進我的問字</a>
+        {% else %}<a class="btn btn-zhu" href="/me/login?next={{ ('/c/' ~ case.token ~ '?claim=1') | urlencode }}">登入並收進我的問字</a>{% endif %}
+      {% endif %}
+    </div>
+    <p class="hint" id="copy-state" aria-live="polite">{% if can_claim and settings.google_login_enabled %}用 Google 登入後，這一筆會收進「我的問字」，換手機也找得到。{% endif %}</p>
+  </section>
+  {% endif %}
 </div>
 <script id="strokes-data" type="application/json">{{ strokes | tojson }}</script>
 {% endblock %}
@@ -41,6 +62,12 @@
 <script type="module">
   import { replayInto, drawStatic } from "/static/js/replay.js";
   import { Socket } from "/static/js/ws-client.js";
+  const copyBtn = document.getElementById("copy-link");
+  if (copyBtn) copyBtn.onclick = async () => {
+    const url = location.origin + location.pathname;
+    try { await navigator.clipboard.writeText(url); document.getElementById("copy-state").textContent = "已複製連結。"; }
+    catch { prompt("請長按複製這個連結", url); }
+  };
   const strokes = JSON.parse(document.getElementById("strokes-data").textContent);
   const canvas = document.getElementById("pad");
   drawStatic(canvas, strokes);
@@ -48,10 +75,13 @@
     replayInto(canvas, strokes.map(s => ({ ...s, type: "stroke" })));
   {% if case.status.value in ("submitted", "answered") %}
   const sock = new Socket(`/ws/user/{{ case.token }}`, msg => {
-    if (msg.type === "answer_ready" || msg.type === "answer_retracted") location.reload();
+    if (["answer_ready", "answer_retracted", "rewrite_requested"].includes(msg.type)) location.reload();
+    if (msg.type === "case_replaced") location.href = msg.url;
+    if (msg.type === "case_deleted") location.reload();
   });
   setInterval(async () => {
     const r = await fetch(`/api/cases/{{ case.token }}`);
+    if (r.status === 404) return location.reload();
     if (r.ok && (await r.json()).case.status !== "{{ case.status.value }}") location.reload();
   }, 60000);
   {% endif %}

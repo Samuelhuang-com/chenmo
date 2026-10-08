@@ -98,6 +98,13 @@ class SqliteCaseRepository:
             "ORDER BY created_at DESC LIMIT ?", (email, limit)).fetchall()
         return [Case.model_validate_json(r[0]) for r in rows]
 
+    async def delete(self, case_id: str) -> bool:
+        async with self.lock:
+            cur = self.db.execute("DELETE FROM cases WHERE id=?", (case_id,))
+            self.db.execute("DELETE FROM events WHERE case_id=?", (case_id,))
+            self.db.commit()
+            return cur.rowcount > 0
+
     async def append_event(self, case_id: str, event: dict) -> None:
         async with self.lock:
             self.db.execute("INSERT INTO events(case_id, data) VALUES (?, ?)",

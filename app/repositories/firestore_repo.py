@@ -61,6 +61,15 @@ class FirestoreCaseRepository:
         cases = [Case(**s.to_dict()) async for s in q.stream()]
         return sorted(cases, key=lambda c: c.created_at, reverse=True)
 
+    async def delete(self, case_id: str) -> bool:
+        ref = self.col.document(case_id)
+        if not (await ref.get()).exists:
+            return False
+        async for ev in ref.collection("events").stream():
+            await ev.reference.delete()
+        await ref.delete()
+        return True
+
     async def append_event(self, case_id: str, event: dict) -> None:
         # 同一案件的事件由同一條 WebSocket 依序處理，用奈秒時間戳當流水號即可保證順序，
         # 不需要 transaction（避免與 stroke_count 更新互相競爭）。

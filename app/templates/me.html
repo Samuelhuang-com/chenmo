@@ -26,7 +26,8 @@
           <span class="h-a">{{ c.answer[:90] }}{% if c.answer|length > 90 %}……{% endif %}</span>
           <span class="h-meta"><span class="state-done">已解</span>　解於 {{ c.answered_at | fmt_ms }}</span>
           {% else %}
-          <span class="h-meta"><span class="state-wait">待老師解讀</span>　呈送於 {{ c.submitted_at | fmt_ms }}</span>
+          {% if c.rewrite_requested_at %}<span class="h-meta"><span class="state-wait">老師請你重寫</span>　點進來重新書寫</span>
+          {% else %}<span class="h-meta"><span class="state-wait">待老師解讀</span>　呈送於 {{ c.submitted_at | fmt_ms }}</span>{% endif %}
           {% endif %}
         </span>
       </a>

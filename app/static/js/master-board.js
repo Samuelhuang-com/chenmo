@@ -52,6 +52,7 @@ function upsert(c) {
 
 new Socket("/ws/master", msg => {
   if (msg.type === "case_new" || msg.type === "case_update") return upsert(msg.case);
+  if (msg.type === "case_deleted") { cases = cases.filter(x => x.id !== msg.case_id); return render(); }
   const c = cases.find(x => x.id === msg.case_id);
   if (!c) return reload();
   live.set(c.id, Date.now());

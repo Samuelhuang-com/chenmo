@@ -345,3 +345,21 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .offline { max-width: 480px; margin: 60px auto; text-align: center; }
 
 .site-nav a.nav-master { color: #E9C66B; }
+
+/* 請重寫／刪除 */
+.btn-danger { color: var(--zhu); border-color: var(--zhu); background: transparent; }
+.btn-danger:hover { background: var(--zhu); color: #fff; }
+.redo-note { border-left: 3px solid var(--zhu); text-align: center; }
+.redo-note h2 { color: var(--zhu); }
+#rewrite-reason { width: 100%; margin: 8px 0 12px; }
+
+/* 保存連結／認領 */
+.keep-box { text-align: center; }
+.keep-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0 6px; }
+
+/* 字格未完整出現在畫面時鎖住書寫，手指滑動改為捲動頁面 */
+#pad-box.locked, #pad-box.locked canvas { touch-action: pan-y; }
+.pad-lock { position: absolute; inset: 0; z-index: 2; display: none; place-items: center; text-align: center;
+  pointer-events: none; background: color-mix(in srgb, var(--xuan) 55%, transparent);
+  color: var(--tai); font-size: var(--step-0); letter-spacing: .08em; }
+#pad-box.locked .pad-lock { display: grid; }

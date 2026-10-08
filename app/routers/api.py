@@ -24,7 +24,15 @@ async def create_case(request: Request):
     if not _limiter.allow(client_ip(request)):
         raise HTTPException(429, "提問太頻繁，請稍後再試")
     repo = get_repo()
+    try:
+        redo_of = str((await request.json()).get("redo_of", ""))[:64]
+    except Exception:  # noqa: BLE001  沒有 body 就是一般新問字
+        redo_of = ""
     case = await repo.create_case()
+    if redo_of:
+        old = await repo.get_by_token(redo_of)
+        if old and old.rewrite_requested_at and old.status == CaseStatus.submitted:
+            case = await repo.update(case.id, redo_of=redo_of)
     if student:
         case = await repo.update(case.id, owner_email=student["email"], owner_name=student.get("name", ""))
     await hub.to_masters({"type": "case_new", "case": case.model_dump(mode="json")})
@@ -69,6 +77,12 @@ async def submit_case(token: str, body: SubmitIn, request: Request):
     case = await repo.update(case.id, **extra, question=body.question, char=body.char,
                              birth_year=body.birth_year, gender=body.gender,
                              status=CaseStatus.submitted, submitted_at=now_ms())
+    if case.redo_of:   # 重寫完成：老師要求重寫的舊案件由新的取代
+        old = await repo.get_by_token(case.redo_of)
+        if old and old.rewrite_requested_at and old.status == CaseStatus.submitted:
+            await repo.delete(old.id)
+            await hub.to_masters({"type": "case_deleted", "case_id": old.id})
+            await hub.to_user(old.token, {"type": "case_replaced", "url": f"/c/{case.token}"})
     await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
     from app.services.notify import notify_new_case
     await notify_new_case(case, str(request.base_url))   # 失敗不影響送出
