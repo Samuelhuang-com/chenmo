@@ -26,7 +26,7 @@
       <img class="brand-logo" src="{{ brand('logo.svg') }}" alt="" width="44" height="44">
       <span class="brand-name">{{ settings.app_name }}</span>
     </a>
-    <nav class="site-nav">{% block nav %}<a href="/ask">問字</a>{% endblock %}{% block nav_me %}{% if request.session.get("student") %}<a href="/me">我的問字</a>{% else %}<a href="/me/login?next=/me">登入</a>{% endif %}{% endblock %}</nav>
+    <nav class="site-nav">{% block nav_master %}{% if request.session.get("master") %}<a href="/master" class="nav-master">案前</a>{% endif %}{% endblock %}{% block nav %}<a href="/ask">問字</a>{% endblock %}{% block nav_me %}{% if request.session.get("student") %}<a href="/me">我的問字</a>{% else %}<a href="/me/login?next=/me">登入</a>{% endif %}{% endblock %}</nav>
   </header>
   <main>{% block main %}{% endblock %}</main>
   <footer class="site-foot">

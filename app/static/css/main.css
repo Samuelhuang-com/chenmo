@@ -343,3 +343,5 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .install { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .install .hint { margin: 0; color: var(--tai); }
 .offline { max-width: 480px; margin: 60px auto; text-align: center; }
+
+.site-nav a.nav-master { color: #E9C66B; }

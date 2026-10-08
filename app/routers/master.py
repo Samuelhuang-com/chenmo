@@ -88,7 +88,13 @@ async def google_callback(request: Request):
         if not info.get("email_verified") or not email:
             return RedirectResponse("/?login_error=1", status_code=303)
         request.session[STUDENT_KEY] = {"email": email, "name": info.get("name") or email}
-        return RedirectResponse(request.session.pop("login_next", "/me"), status_code=303)
+        nxt = request.session.pop("login_next", "/me")
+        if email in get_settings().master_email_set:
+            # 老師從前台登入：同時開啟老師身分，直接進案前（除非是要去問字頁或看某一案）
+            request.session[SESSION_KEY] = {"email": email, "name": info.get("name") or email}
+            if not (nxt.startswith("/ask") or nxt.startswith("/c/")):
+                nxt = "/master"
+        return RedirectResponse(nxt, status_code=303)
     if not info.get("email_verified") or email not in get_settings().master_email_set:
         return _login_error("此帳號沒有老師權限")
     request.session[SESSION_KEY] = {"email": email, "name": info.get("name") or email}

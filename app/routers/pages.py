@@ -12,7 +12,11 @@ router = APIRouter()
 
 
 @router.get("/")
-async def index(request: Request):
+async def index(request: Request, source: str = ""):
+    # 老師從手機主畫面打開 App：直接進案前
+    if source == "pwa" and request.session.get("master"):
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/master", status_code=303)
     return templates.TemplateResponse(request, "index.html", {})
 
 

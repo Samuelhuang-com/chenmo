@@ -455,3 +455,24 @@ def test_brand_switch(monkeypatch):
         assert f"/static/brand/{k}/logo.svg" in client.get("/").text
     monkeypatch.setattr(get_settings(), "brand_logo", "Z")              # 不存在的款式退回 C
     assert "/static/brand/C/logo.svg" in client.get("/").text
+
+
+def test_teacher_logs_in_from_front_door(monkeypatch):
+    from app.config import get_settings
+    _fake_google(monkeypatch, "boss@gmail.com", "老師")
+    monkeypatch.setattr(get_settings(), "master_emails", "boss@gmail.com")
+    t = TestClient(app)
+    r = t.get("/me/login?next=/me", follow_redirects=True)          # 從前台「登入」
+    assert r.url.path == "/master"                                   # 直接進案前
+    assert t.get("/api/master/cases").status_code == 200
+    assert 'class="nav-master"' in t.get("/").text                   # 前台頁首有「案前」
+    # 從 PWA 打開 → 直接進案前
+    assert t.get("/?source=pwa", follow_redirects=False).headers["location"] == "/master"
+    # 要問字時仍可留在問字頁
+    assert t.get("/me/login?next=/ask", follow_redirects=True).url.path == "/ask"
+    # 一般學生從 PWA 打開仍看到首頁
+    _fake_google(monkeypatch, "student@gmail.com")
+    s2 = TestClient(app)
+    s2.get("/me/login?next=/me")
+    assert s2.get("/?source=pwa", follow_redirects=False).status_code == 200
+    assert 'class="nav-master"' not in s2.get("/").text

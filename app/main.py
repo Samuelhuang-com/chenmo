@@ -28,7 +28,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=settings.secret_key,
     session_cookie="chenmo_session",
-    max_age=60 * 60 * 12,
+    max_age=60 * 60 * 24 * 14,   # 14 天，PWA 不必常常重新登入
     same_site="lax",
     https_only=settings.secure_cookies,
 )
