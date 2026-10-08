@@ -125,7 +125,7 @@ def build_context(case: Case, i: CharInfo, f: StrokeFeatures) -> str:
 async def compose(case: Case, events: list[dict], char: str, use_ai: bool = True) -> dict:
     info = lookup(char)
     feats = analyze(events, info.total_strokes or None)
-    ai = await ai_draft.generate(build_context(case, info, feats)) if use_ai else None
+    ai, ai_error = (await ai_draft.generate_ex(build_context(case, info, feats))) if use_ai else (None, "")
     sections = {
         "此字": _sec_char(info, feats, case),
         "五行": _sec_wuxing(info, ai),
@@ -134,5 +134,5 @@ async def compose(case: Case, events: list[dict], char: str, use_ai: bool = True
         "解讀": _sec_ai(ai, "reading"),
     }
     text = "\n\n".join(f"【{k}】\n{v}" for k, v in sections.items())
-    return {"char": char, "sections": sections, "text": text, "ai_used": bool(ai),
+    return {"char": char, "sections": sections, "text": text, "ai_used": bool(ai), "ai_error": ai_error,
             "features": feats.__dict__}

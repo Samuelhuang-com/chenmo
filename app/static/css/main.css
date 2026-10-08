@@ -394,3 +394,5 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .rte-body { min-height: 280px; padding: 16px 18px; outline: none; font-size: var(--step-0); line-height: 1.9; white-space: normal;
   color: #222; cursor: text; background: transparent; border-radius: 0 0 10px 10px; }
 .rte-body:empty::before, .rte-body[data-empty="1"]::before { content: attr(data-placeholder); color: #a79d86; }
+
+#jiezi-state.warn { color: var(--zhu); font-weight: 600; }

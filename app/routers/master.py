@@ -293,5 +293,7 @@ async def api_jiezi(case_id: str, body: JieziIn, master: dict = Depends(require_
     if case.draft and case.draft_char == body.char and not body.refresh:
         return {"char": body.char, "text": case.draft, "cached": True}
     result = await compose(case, await repo.list_events(case_id), body.char)
-    await repo.update(case_id, draft=result["text"], draft_char=body.char)
+    # AI 設定了卻失敗時不要快取，下次按「帶出字資料」才會重試
+    if result["ai_used"] or not result["ai_error"]:
+        await repo.update(case_id, draft=result["text"], draft_char=body.char)
     return {**result, "cached": False}

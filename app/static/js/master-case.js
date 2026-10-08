@@ -97,7 +97,9 @@ async function runJiezi(refresh = false) {
     btn.textContent = "重新產生";
     $("jiezi-state").textContent = d.cached ? "已帶出先前產生的內容。要重新產生請再按一次「重新產生」。"
       : d.ai_used ? "已帶出。標示「AI 草稿」的段落請審閱修改後再送出。"
+      : d.ai_error ? `字庫資料已帶出，但 AI 草稿失敗（${d.ai_error}）。【解讀】沒有內容，請再按一次「重新產生」，或自己填寫。`
       : "已帶出字庫資料。尚未設定 AI，字義與解讀請老師補充。";
+    if (!d.cached && !d.ai_used) $("jiezi-state").classList.add("warn"); else $("jiezi-state").classList.remove("warn");
     btn.dataset.refresh = "1";
   } catch (e) {
     $("jiezi-state").textContent = e.message;

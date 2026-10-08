@@ -45,25 +45,38 @@ def _extract_json(text: str) -> dict | None:
         return None
 
 
-async def generate(context: str) -> dict | None:
+async def generate_ex(context: str) -> tuple[dict | None, str]:
+    """回傳（草稿, 失敗原因）。未設定 API Key 時原因為空字串；失敗會自動重試一次。"""
     s = get_settings()
     if not s.anthropic_api_key:
-        return None
+        return None, ""
     try:
         from anthropic import AsyncAnthropic
-
-        client = AsyncAnthropic(api_key=s.anthropic_api_key)
-        msg = await client.messages.create(
-            model=s.anthropic_model,
-            max_tokens=2000,
-            system=SYSTEM,
-            messages=[{"role": "user", "content": context}],
-        )
-        text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
-        data = _extract_json(text)
-        if not data:
-            log.warning("AI draft: response was not JSON")
-        return data
     except Exception:  # noqa: BLE001
-        log.exception("AI draft failed")
-        return None
+        return None, "伺服器沒有安裝 anthropic 套件"
+    client = AsyncAnthropic(api_key=s.anthropic_api_key, max_retries=2, timeout=90)
+    reason = ""
+    for attempt in (1, 2):
+        try:
+            msg = await client.messages.create(
+                model=s.anthropic_model,
+                max_tokens=4000,          # 中文 JSON 容易超過 2000 token 而被截斷
+                system=SYSTEM,
+                messages=[{"role": "user", "content": context}],
+            )
+            text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+            data = _extract_json(text)
+            if data and str(data.get("reading", "")).strip():
+                return data, ""
+            reason = ("AI 回覆被截斷" if getattr(msg, "stop_reason", "") == "max_tokens"
+                      else "AI 回覆的格式不是預期的 JSON，或沒有寫出解讀")
+            log.warning("AI draft attempt %s: %s (stop=%s)", attempt, reason, getattr(msg, "stop_reason", ""))
+        except Exception as e:  # noqa: BLE001
+            reason = f"{type(e).__name__}：{str(e)[:160]}"
+            log.exception("AI draft attempt %s failed", attempt)
+    return None, reason
+
+
+async def generate(context: str) -> dict | None:
+    data, _ = await generate_ex(context)
+    return data
