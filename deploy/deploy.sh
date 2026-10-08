@@ -37,7 +37,7 @@ gcloud run deploy "$SERVICE" \
   --timeout 3600 \
   --session-affinity \
   --cpu 1 --memory 512Mi \
-  --set-env-vars "^;^REPO_BACKEND=firestore;GCP_PROJECT=$PROJECT_ID;SECURE_COOKIES=true;MASTER_EMAILS=$MASTER_EMAILS;SMTP_USER=$SMTP_USER;NOTIFY_EMAILS=$NOTIFY_EMAILS;SITE_URL=$SITE_URL" \
+  --set-env-vars "^;^REPO_BACKEND=firestore;GCP_PROJECT=$PROJECT_ID;SECURE_COOKIES=true;MASTER_EMAILS=$MASTER_EMAILS;SMTP_USER=$SMTP_USER;NOTIFY_EMAILS=$NOTIFY_EMAILS;SITE_URL=$SITE_URL;SPONSOR_LINE_URL=$SPONSOR_LINE_URL" \
   --set-secrets "$SECRETS"
 
 URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')

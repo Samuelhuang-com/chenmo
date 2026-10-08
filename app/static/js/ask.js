@@ -16,6 +16,7 @@ function ensureCase() {
   if (!creating) {
     creating = fetch("/api/cases", { method: "POST" }).then(async r => {
       const d = await r.json().catch(() => ({}));
+      if (r.status === 401) { location.href = "/me/login?next=/ask"; throw new Error("請先登入"); }
       if (!r.ok) throw new Error(d.detail || "暫時無法建立問事，請稍後再試");
       token = d.token;
       sock = new Socket(`/ws/user/${token}`, onMsg, onState);

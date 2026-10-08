@@ -1,0 +1,10 @@
+{% if settings.sponsor_line_url or sponsor_qr() %}
+<section class="paper sponsor">
+  <h2>請老師喝杯咖啡</h2>
+  <p>{{ settings.sponsor_text }}</p>
+  <div class="sponsor-row">
+    {% if sponsor_qr() %}<img class="sponsor-qr" src="{{ sponsor_qr() }}" alt="LINE Pay 贊助收款碼" width="160" height="160">{% endif %}
+    {% if settings.sponsor_line_url %}<a class="btn btn-line" href="{{ settings.sponsor_line_url }}" target="_blank" rel="noopener">用 LINE 贊助</a>{% endif %}
+  </div>
+</section>
+{% endif %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}隱私權政策｜{{ settings.app_name }}{% endblock %}
+{% block main %}
+<article class="paper legal">
+  <h2>隱私權政策</h2>
+  <p class="hint">最後更新：2026 年 10 月 8 日</p>
+
+  <h3>我們收集哪些資料</h3>
+  <ul>
+    <li>Google 帳號登入時提供的姓名與 Email。</li>
+    <li>你在問字時填寫的年次、性別、問題描述，以及手寫筆跡（每一筆的座標、時間與順序）或自選的字。</li>
+    <li>老師給你的解讀內容。</li>
+  </ul>
+
+  <h3>用途</h3>
+  <ul>
+    <li>讓解題老師為你測字、撰寫解讀。</li>
+    <li>保存紀錄，讓你在「我的問字」隨時查看。</li>
+    <li>有新的問字時通知老師。</li>
+  </ul>
+  <p>我們不會出售、出租你的資料，也不會用於廣告。</p>
+
+  <h3>保存與安全</h3>
+  <p>資料存放於 Google Cloud 台灣區（asia-east1），傳輸全程加密。只有你本人與解題老師看得到你的問字內容。</p>
+
+  <h3>你的權利</h3>
+  <p>依《個人資料保護法》，你可以要求查詢、更正或刪除你的資料。請來信 <a href="mailto:{{ settings.notify_recipients[0] if settings.notify_recipients else 'sam2307@gmail.com' }}">{{ settings.notify_recipients[0] if settings.notify_recipients else 'sam2307@gmail.com' }}</a>，我們會儘快處理。</p>
+</article>
+{% endblock %}

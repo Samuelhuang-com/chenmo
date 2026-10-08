@@ -2,6 +2,7 @@
 {% block title %}問字結果｜{{ settings.app_name }}{% endblock %}
 {% block main %}
 <div class="case-wrap">
+  {% if is_owner %}<p class="as-who"><a href="/me">回我的問字</a></p>{% endif %}
   <section class="paper">
     <h2>所問</h2>
     <p class="case-q">{{ case.question or "（未填寫）" }}</p>
@@ -21,6 +22,7 @@
     <div class="answer">{{ case.answer }}</div>
     <p class="answer-sign">解於 {{ case.answered_at | fmt_ms }}</p>
   </section>
+  {% include "_sponsor.html" %}
   {% elif case.status.value == "submitted" %}
   <section class="paper waiting" id="waiting">
     <div class="ink-drop" aria-hidden="true"></div>

@@ -46,6 +46,11 @@ class MemoryCaseRepository:
         cases.sort(key=key, reverse=True)
         return [c.model_copy() for c in cases[offset:offset + limit]]
 
+    async def list_by_owner(self, email: str, limit: int = 200) -> list[Case]:
+        cases = [c for c in self._cases.values() if email and c.owner_email == email]
+        cases.sort(key=lambda c: c.created_at, reverse=True)
+        return [c.model_copy() for c in cases[:limit]]
+
     async def append_event(self, case_id: str, event: dict) -> None:
         async with self._lock:
             evs = self._events.setdefault(case_id, [])

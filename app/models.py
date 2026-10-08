@@ -32,6 +32,8 @@ class Case(BaseModel):
     char_source: str = ""                # written：自己寫／picked：自選字
     offered: list[str] = Field(default_factory=list)   # 自選字時，系統提供的那一組字
     pick_rounds: int = 0                 # 自選字時按了幾次「換一組」後才選定（第幾組）
+    owner_email: str = ""                # 問事者登入的 Google 信箱（未登入為空）
+    owner_name: str = ""
     birth_year: int | None = None        # 年次（民國年）
     gender: str = ""                     # 男／女
     status: CaseStatus = CaseStatus.drafting

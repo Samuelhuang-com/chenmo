@@ -55,6 +55,12 @@ class FirestoreCaseRepository:
         q = q.order_by(order, direction=firestore.Query.DESCENDING).offset(offset).limit(limit)
         return [Case(**s.to_dict()) async for s in q.stream()]
 
+    async def list_by_owner(self, email: str, limit: int = 200) -> list[Case]:
+        # 只用單一欄位等於條件（不需複合索引），排序在程式內做
+        q = self.col.where(filter=firestore.FieldFilter("owner_email", "==", email)).limit(limit)
+        cases = [Case(**s.to_dict()) async for s in q.stream()]
+        return sorted(cases, key=lambda c: c.created_at, reverse=True)
+
     async def append_event(self, case_id: str, event: dict) -> None:
         # 同一案件的事件由同一條 WebSocket 依序處理，用奈秒時間戳當流水號即可保證順序，
         # 不需要 transaction（避免與 stroke_count 更新互相競爭）。

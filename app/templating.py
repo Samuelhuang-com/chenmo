@@ -18,3 +18,8 @@ def fmt_ms(ms: int | None) -> str:
 
 
 templates.env.filters["fmt_ms"] = fmt_ms
+
+
+# 隨喜贊助 QR 圖：放在 app/static/img/sponsor-qr.png 就會顯示
+SPONSOR_QR = Path(__file__).parent / "static" / "img" / "sponsor-qr.png"
+templates.env.globals["sponsor_qr"] = lambda: "/static/img/sponsor-qr.png" if SPONSOR_QR.exists() else ""

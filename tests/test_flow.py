@@ -149,6 +149,8 @@ def test_jiezi_without_ai():
 
 
 def test_jiezi_with_ai_mock(monkeypatch):
+    import pytest
+    pytest.importorskip("anthropic")
     from app.services import ai_draft
 
     class FakeMsg:
@@ -318,3 +320,113 @@ def test_email_failure_does_not_block_submit(monkeypatch):
         ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
     r = client.post(f"/api/cases/{token}/submit", json={"question": "問", **PROFILE})
     assert r.status_code == 200
+
+
+def _fake_google(monkeypatch, email, name="學生甲"):
+    """模擬 Google OAuth：authorize_redirect 直接跳回 callback，callback 回傳指定帳號。"""
+    from fastapi.responses import RedirectResponse
+    import app.routers.master as master_mod
+    from app.config import get_settings
+
+    class FakeGoogle:
+        async def authorize_redirect(self, request, redirect_uri):
+            return RedirectResponse(redirect_uri, status_code=302)
+
+        async def authorize_access_token(self, request):
+            return {"userinfo": {"email": email, "email_verified": True, "name": name}}
+
+    class FakeOAuth:
+        google = FakeGoogle()
+
+    s = get_settings()
+    monkeypatch.setattr(master_mod, "get_oauth", lambda: FakeOAuth())
+    monkeypatch.setattr(s, "google_client_id", "cid")
+    monkeypatch.setattr(s, "google_client_secret", "csecret")
+
+
+def test_student_login_and_my_cases(monkeypatch):
+    _fake_google(monkeypatch, "student@gmail.com")
+    st = TestClient(app)
+    # 需要登入：未登入不能問字
+    assert "先登入，再問字" in st.get("/ask").text
+    assert st.post("/api/cases").status_code == 401
+    assert st.get("/me", follow_redirects=False).headers["location"].startswith("/me/login")
+    # 登入
+    r = st.get("/me/login?next=/ask", follow_redirects=True)
+    assert r.url.path == "/ask" and "以 學生甲 的身分問字" in r.text
+    # 問字
+    token = st.post("/api/cases").json()["token"]
+    with st.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    assert st.post(f"/api/cases/{token}/submit", json={"question": "問考運", "char": "考", **PROFILE}).status_code == 200
+    me = st.get("/me").text
+    assert "問考運" in me and "待老師解讀" in me
+    # 老師解讀後，學生在「我的問字」看得到解讀
+    master = TestClient(app)
+    login(master)
+    case_id = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    assert master.get(f"/api/master/cases/{case_id}").json()["case"]["owner_email"] == "student@gmail.com"
+    master.post(f"/api/master/cases/{case_id}/answer", json={"body": "【解讀】\n考字下有巧，宜穩中求進。"})
+    me = st.get("/me").text
+    assert "宜穩中求進" in me and "已解" in me
+    # 別人看不到這筆
+    _fake_google(monkeypatch, "other@gmail.com", "學生乙")
+    other = TestClient(app)
+    other.get("/me/login?next=/me")
+    assert "問考運" not in other.get("/me").text
+    # 登出
+    st.get("/me/logout")
+    assert st.post("/api/cases").status_code == 401
+
+
+def test_teacher_login_still_works_with_shared_callback(monkeypatch):
+    _fake_google(monkeypatch, "boss@gmail.com", "老師")
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "master_emails", "boss@gmail.com")
+    t = TestClient(app)
+    r = t.get("/master/auth/google", follow_redirects=True)
+    assert r.url.path == "/master" and t.get("/api/master/cases").status_code == 200
+    # 學生帳號走老師登入會被拒
+    _fake_google(monkeypatch, "student@gmail.com")
+    s2 = TestClient(app)
+    r = s2.get("/master/auth/google", follow_redirects=True)
+    assert "沒有老師權限" in r.text
+
+
+def test_sponsor_box(monkeypatch):
+    from app.config import get_settings
+    master = TestClient(app)
+    login(master)
+    token = client.post("/api/cases").json()["token"]
+    with client.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    client.post(f"/api/cases/{token}/submit", json={"question": "問", **PROFILE})
+    case_id = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    assert "請老師喝杯咖啡" not in client.get(f"/c/{token}").text           # 未設定不顯示
+    monkeypatch.setattr(get_settings(), "sponsor_line_url", "https://line.me/R/xxx")
+    assert "請老師喝杯咖啡" not in client.get(f"/c/{token}").text           # 尚未解讀不顯示
+    master.post(f"/api/master/cases/{case_id}/answer", json={"body": "【解讀】\n好"})
+    page = client.get(f"/c/{token}").text
+    assert "請老師喝杯咖啡" in page and "https://line.me/R/xxx" in page
+
+
+def test_sqlite_list_by_owner(tmp_path):
+    import asyncio
+    from app.repositories.sqlite_repo import SqliteCaseRepository
+
+    async def run():
+        r = SqliteCaseRepository(str(tmp_path / "o.db"))
+        a = await r.create_case(); await r.update(a.id, owner_email="s@x.com", question="一")
+        b = await r.create_case(); await r.update(b.id, owner_email="s@x.com", question="二")
+        c = await r.create_case(); await r.update(c.id, owner_email="t@x.com")
+        got = await r.list_by_owner("s@x.com")
+        assert [x.id for x in got] == [b.id, a.id] or {x.id for x in got} == {a.id, b.id}
+        assert len(got) == 2
+    asyncio.run(run())
+
+
+def test_legal_pages():
+    assert "個人資料保護法" in client.get("/privacy").text
+    assert "不構成醫療" in client.get("/terms").text

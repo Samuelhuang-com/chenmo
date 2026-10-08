@@ -313,3 +313,27 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .picked-note { color: var(--zhu); }
 .tag-pick { display: inline-block; font-size: 12px; color: var(--zhu); border: 1px solid var(--zhu);
   border-radius: 2px; padding: 0 6px; margin-left: 6px; line-height: 1.6; vertical-align: middle; }
+
+/* ---------- 學生登入／我的問字 ---------- */
+.login-gate { text-align: center; }
+.login-gate p { max-width: 28em; margin: 0 auto 18px; }
+.login-gate .hint { margin-top: 14px; }
+.as-who { color: var(--tai); font-size: var(--step--1); margin: -8px 0 16px; }
+.as-who a { color: var(--xuan); margin-left: 8px; }
+.state-done { color: #4a6b53; }
+.state-wait { color: var(--zhu); }
+
+/* ---------- 隨喜贊助 ---------- */
+.sponsor { text-align: center; }
+.sponsor p { color: var(--mo-soft); font-size: var(--step--1); max-width: 30em; margin: 0 auto 16px; }
+.sponsor-row { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: center; }
+.sponsor-qr { width: 160px; height: 160px; object-fit: contain; background: #fff; padding: 6px; }
+.btn-line { background: #06c755; border-color: #06c755; color: #fff; letter-spacing: .1em; }
+.btn-line:hover { background: #05a847; border-color: #05a847; }
+.login-gate .btn-zhu { letter-spacing: .12em; font-size: var(--step-0); padding: 10px 22px; }
+
+/* ---------- 隱私權政策／服務條款 ---------- */
+.legal { max-width: 720px; margin: 0 auto; }
+.legal h3 { font-family: var(--kai); font-weight: 400; font-size: var(--step-1); margin: 24px 0 6px; }
+.legal ul { padding-left: 1.2em; margin: 0; }
+.legal a { color: var(--zhu); }

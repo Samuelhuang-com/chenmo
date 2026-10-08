@@ -17,9 +17,16 @@ _limiter = RateLimiter(limit=get_settings().cases_per_ip_per_hour, window_sec=36
 
 @router.post("/cases", status_code=201)
 async def create_case(request: Request):
+    from app.auth import current_student
+    student = current_student(request)
+    if get_settings().student_login_effective and not student:
+        raise HTTPException(401, "請先用 Google 帳號登入再問字")
     if not _limiter.allow(client_ip(request)):
         raise HTTPException(429, "提問太頻繁，請稍後再試")
-    case = await get_repo().create_case()
+    repo = get_repo()
+    case = await repo.create_case()
+    if student:
+        case = await repo.update(case.id, owner_email=student["email"], owner_name=student.get("name", ""))
     await hub.to_masters({"type": "case_new", "case": case.model_dump(mode="json")})
     return {"token": case.token}
 

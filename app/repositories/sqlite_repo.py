@@ -92,6 +92,12 @@ class SqliteCaseRepository:
                                    (limit, offset)).fetchall()
         return [Case.model_validate_json(r[0]) for r in rows]
 
+    async def list_by_owner(self, email: str, limit: int = 200) -> list[Case]:
+        rows = self.db.execute(
+            "SELECT data FROM cases WHERE json_extract(data, '$.owner_email') = ? "
+            "ORDER BY created_at DESC LIMIT ?", (email, limit)).fetchall()
+        return [Case.model_validate_json(r[0]) for r in rows]
+
     async def append_event(self, case_id: str, event: dict) -> None:
         async with self.lock:
             self.db.execute("INSERT INTO events(case_id, data) VALUES (?, ?)",

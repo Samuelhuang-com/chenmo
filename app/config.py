@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # 允許登入老師端的 Google 信箱，逗號分隔
     master_emails: str = ""
 
+    # 學生（問事者）是否必須先用 Google 登入才能問字（需已設定 Google 登入才會生效）
+    student_login_required: bool = True
+
+    # 隨喜贊助（請老師喝咖啡）：LINE Pay 收款連結；或放一張收款 QR 圖到 app/static/img/sponsor-qr.png
+    sponsor_line_url: str | None = None
+    sponsor_text: str = "如果這次解讀對你有幫助，歡迎隨喜請老師喝杯咖啡。完全自由，不影響任何服務。"
+
     # 老師登入：密碼（本機開發用；正式環境建議留空停用）
     master_password: str | None = None
 
@@ -75,6 +82,10 @@ class Settings(BaseSettings):
     @property
     def google_login_enabled(self) -> bool:
         return bool(self.google_client_id and self.google_client_secret)
+
+    @property
+    def student_login_effective(self) -> bool:
+        return self.student_login_required and self.google_login_enabled
 
 
 @lru_cache

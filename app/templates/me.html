@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}我的問字｜{{ settings.app_name }}{% endblock %}
+{% block nav_me %}<a href="/me/logout">登出</a>{% endblock %}
+{% block main %}
+<div class="history">
+  <h1 class="ask-title">我的問字</h1>
+  <p class="as-who">{{ student.name }}（{{ student.email }}）</p>
+
+  {% if cases %}
+  <ol class="h-list">
+    {% for c in cases %}
+    <li>
+      <a class="h-item" href="/c/{{ c.token }}">
+        <span class="t-char grid-paper">{{ c.char or "？" }}</span>
+        <span class="h-body">
+          <span class="h-q">{{ c.question or "（未填寫問題）" }}</span>
+          {% if c.status.value == "answered" %}
+          <span class="h-a">{{ c.answer[:90] }}{% if c.answer|length > 90 %}……{% endif %}</span>
+          <span class="h-meta"><span class="state-done">已解</span>　解於 {{ c.answered_at | fmt_ms }}</span>
+          {% else %}
+          <span class="h-meta"><span class="state-wait">待老師解讀</span>　呈送於 {{ c.submitted_at | fmt_ms }}</span>
+          {% endif %}
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <section class="paper" style="text-align:center">
+    <p>你還沒有問過字。</p>
+    <a class="btn btn-zhu" href="/ask">寫字問事</a>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

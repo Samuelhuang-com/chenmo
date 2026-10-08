@@ -4,6 +4,15 @@
 {% block main %}
 <div class="ask-wrap">
   <h1 class="ask-title">問字</h1>
+{% if need_login %}
+  <section class="paper login-gate">
+    <h2>先登入，再問字</h2>
+    <p>用 Google 帳號登入後，你問過的每一個字和老師的解讀，都會保存在「我的問字」，隨時可以回來查看。</p>
+    <a class="btn btn-zhu" href="/me/login?next=/ask">用 Google 帳號登入</a>
+    <p class="hint">我們只會取得你的姓名與 Email，用來保存你的問字紀錄。<br>登入即表示同意<a href="/terms">服務條款</a>與<a href="/privacy">隱私權政策</a>。</p>
+  </section>
+{% else %}
+  {% if student %}<p class="as-who">以 {{ student.name }} 的身分問字。<a href="/me">我的問字</a></p>{% endif %}
 
   <section class="paper">
     <h2>問事者</h2>
@@ -63,8 +72,9 @@
     <button class="btn btn-zhu" type="button" id="submit">呈送</button>
   </div>
   <p class="form-error" id="error" role="alert"></p>
+{% endif %}
 </div>
 {% endblock %}
 {% block scripts %}
-<script type="module" src="/static/js/ask.js"></script>
+{% if not need_login %}<script type="module" src="/static/js/ask.js"></script>{% endif %}
 {% endblock %}

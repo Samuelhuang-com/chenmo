@@ -7,7 +7,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
-from app.auth import SESSION_KEY, get_oauth, require_master_api, require_master_page
+from app.auth import SESSION_KEY, STUDENT_KEY, get_oauth, require_master_api, require_master_page
 from app.config import get_settings
 from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, now_ms
 from app.services.sections import public_reading
@@ -48,8 +48,27 @@ async def login_google(request: Request):
     oauth = get_oauth()
     if not oauth:
         raise HTTPException(404, "尚未設定 Google 登入")
+    request.session["login_for"] = "master"
     redirect_uri = str(request.url_for("google_callback"))
     return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/me/login")
+async def student_login(request: Request, next: str = "/me"):
+    """學生（問事者）用 Google 登入。與老師共用同一個回呼網址，不需另外設定 OAuth。"""
+    oauth = get_oauth()
+    if not oauth:
+        return RedirectResponse(next if next.startswith("/") else "/", status_code=303)
+    request.session["login_for"] = "student"
+    request.session["login_next"] = next if next.startswith("/") and not next.startswith("//") else "/me"
+    redirect_uri = str(request.url_for("google_callback"))
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@router.get("/me/logout")
+async def student_logout(request: Request):
+    request.session.pop(STUDENT_KEY, None)
+    return RedirectResponse("/", status_code=303)
 
 
 @router.get("/master/auth/callback", name="google_callback")
@@ -60,9 +79,16 @@ async def google_callback(request: Request):
     try:
         token = await oauth.google.authorize_access_token(request)
     except Exception:  # noqa: BLE001
+        if request.session.pop("login_for", "master") == "student":
+            return RedirectResponse("/?login_error=1", status_code=303)
         return _login_error("Google 登入失敗，請再試一次")
     info = token.get("userinfo") or {}
     email = (info.get("email") or "").lower()
+    if request.session.pop("login_for", "master") == "student":
+        if not info.get("email_verified") or not email:
+            return RedirectResponse("/?login_error=1", status_code=303)
+        request.session[STUDENT_KEY] = {"email": email, "name": info.get("name") or email}
+        return RedirectResponse(request.session.pop("login_next", "/me"), status_code=303)
     if not info.get("email_verified") or email not in get_settings().master_email_set:
         return _login_error("此帳號沒有老師權限")
     request.session[SESSION_KEY] = {"email": email, "name": info.get("name") or email}

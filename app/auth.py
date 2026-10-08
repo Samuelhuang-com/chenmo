@@ -6,6 +6,11 @@ from fastapi import HTTPException, Request, WebSocket
 from app.config import get_settings
 
 SESSION_KEY = "master"
+STUDENT_KEY = "student"
+
+
+def current_student(request) -> dict | None:
+    return request.session.get(STUDENT_KEY)
 
 _oauth = None
 
