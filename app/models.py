@@ -55,6 +55,8 @@ class Case(BaseModel):
     rewrite_requested_at: int | None = None   # 老師請問事者重寫的時間
     rewrite_reason: str = ""             # 重寫原因（會顯示給問事者）
     show_sponsor: bool = False           # 老師決定是否在此問事者的頁面顯示「請老師喝杯咖啡」
+    follow_of: str = ""                  # 追問：指向上一筆案件的 token
+    follow_chain: list[dict] = Field(default_factory=list)   # 追問脈絡：[{"question","char"}…]，由舊到新（只存問題與字）
     redo_of: str = ""                    # 重寫時，指向被取代的舊案件 token
 
     @computed_field

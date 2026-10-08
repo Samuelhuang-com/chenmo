@@ -15,7 +15,7 @@ function showErr(m) { err.textContent = m || ""; }
 
 function ensureCase() {
   if (!creating) {
-    creating = fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ redo_of: redoNote?.dataset.token || "" }) }).then(async r => {
+    creating = fetch("/api/cases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ redo_of: redoNote?.dataset.token || "", follow_of: document.getElementById("follow-note")?.dataset.token || "" }) }).then(async r => {
       const d = await r.json().catch(() => ({}));
       if (r.status === 401) { location.href = "/me/login?next=/ask"; throw new Error("請先登入"); }
       if (!r.ok) throw new Error(d.detail || "暫時無法建立問事，請稍後再試");

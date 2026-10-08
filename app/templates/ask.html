@@ -17,7 +17,7 @@
     {% if redo.reason %}<p>{{ redo.reason }}</p>{% else %}<p>上一次的字跡看不太清楚，請再寫一次。</p>{% endif %}
     <p class="hint">問題與年次、性別已幫你帶入，確認後重新寫字再呈送即可。</p>
   </section>{% endif %}
-  {% if follow %}<section class="paper redo-note follow-note" id="follow-note" data-question="{{ follow.question }}" data-birth="{{ follow.birth_year or '' }}" data-gender="{{ follow.gender }}">
+  {% if follow %}<section class="paper redo-note follow-note" id="follow-note" data-token="{{ follow.token }}" data-question="{{ follow.question }}" data-birth="{{ follow.birth_year or '' }}" data-gender="{{ follow.gender }}">
     <h2>接著追問</h2>
     <p class="hint">上一題：{{ follow.prev }}</p>
     <p class="hint">追問已帶入，可以自己修改；再寫一個字就能呈送。</p>

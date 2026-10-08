@@ -720,3 +720,43 @@ def test_email_student_on_answer(monkeypatch):
     r = master.post(f"/api/master/cases/{c2}/answer",
                     json={"body": "【解讀】\n好", "reading_html": "<p>好</p>", "email_student": True}).json()
     assert r["emailed"] is False and "沒有登入" in r["email_note"]
+
+
+def test_followup_carries_context(monkeypatch):
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+
+    def ask_one(question, char, follow_of=None):
+        body = {"follow_of": follow_of} if follow_of else None
+        token = stu.post("/api/cases", json=body).json()["token"] if body else stu.post("/api/cases").json()["token"]
+        with stu.websocket_connect(f"/ws/user/{token}") as ws:
+            stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+            ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+        stu.post(f"/api/cases/{token}/submit", json={"question": question, "char": char, **PROFILE})
+        cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+        return token, cid
+
+    t1, c1 = ask_one("我的財運如何", "財")
+    # 上一筆還沒解讀：不能帶入
+    t_bad, c_bad = ask_one("追問", "問", follow_of=t1)
+    assert master.get(f"/api/master/cases/{c_bad}").json()["case"]["follow_chain"] == []
+    master.post(f"/api/master/cases/{c1}/answer", json={"body": "【解讀】\n好", "reading_html": "<p>好</p>"})
+    t2, c2 = ask_one("什麼時候財運會比較好？", "時", follow_of=t1)
+    case2 = master.get(f"/api/master/cases/{c2}").json()["case"]
+    assert case2["follow_chain"] == [{"question": "我的財運如何", "char": "財"}]
+    page = master.get(f"/master/case/{c2}").text
+    assert "這是追問" in page and "我的財運如何" in page
+    # 第三輪：脈絡會累積（只含問題與字）
+    master.post(f"/api/master/cases/{c2}/answer", json={"body": "【解讀】\n好", "reading_html": "<p>好</p>"})
+    t3, c3 = ask_one("要怎麼增加收入？", "增", follow_of=t2)
+    chain = master.get(f"/api/master/cases/{c3}").json()["case"]["follow_chain"]
+    assert [c["char"] for c in chain] == ["財", "時"]
+    # AI 提示詞帶有前面的問題與字
+    from app.models import Case
+    from app.services.jiezi import build_context, lookup
+    from app.services.stroke_features import analyze
+    ctx = build_context(Case(**{**case2, "follow_chain": chain}), lookup("增"), analyze([], None))
+    assert "這是追問" in ctx and "我的財運如何" in ctx and "「財」" in ctx
+    # 一般問字不受影響
+    t4, c4 = ask_one("別的事", "別")
+    assert master.get(f"/api/master/cases/{c4}").json()["case"]["follow_chain"] == []

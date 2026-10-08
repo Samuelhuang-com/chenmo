@@ -38,6 +38,8 @@ def build_message(case: Case, link: str) -> EmailMessage:
     ]
     if case.char_source == "picked" and case.offered:
         lines.append(f"候選字：{'、'.join(case.offered)}")
+    if case.follow_chain:
+        lines.append("追問，前面已問過：" + "；".join(f"「{c['question']}」（{c['char']}）" for c in case.follow_chain))
     lines += [f"呈送時間：{fmt_ms(case.submitted_at)}", "", f"前往解字：{link}"]
     msg.set_content("\n".join(lines))
 

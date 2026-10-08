@@ -111,7 +111,11 @@ def build_context(case: Case, i: CharInfo, f: StrokeFeatures) -> str:
         f"段注節錄：{sw.get('d', '')}")
     moe_text = "無" if not i.moe else "；".join(
         f"{h['b']} " + " / ".join(d["d"] for d in h["defs"][:6]) for h in i.moe["h"])
-    return f"""問事者：{case.profile_text or '未填寫'}
+    chain = "".join(f"\n第 {n} 輪：問「{c.get('question', '')}」，所寫的字「{c.get('char', '')}」"
+                    for n, c in enumerate(case.follow_chain, 1))
+    follow_text = (f"\n這是追問。前面已問過（由舊到新）：{chain}\n請把前面的問題與字一起納入，綜合判斷，"
+                   "不要只看這一次的字。" if chain else "")
+    return f"""問事者：{case.profile_text or '未填寫'}{follow_text}
 問事者的問題：{case.question or '（未填寫）'}
 所寫的字：{i.char}
 部首：{i.radical_char}；總筆畫：{i.total_strokes}；康熙筆畫：{i.kangxi_strokes}；注音：{i.zhuyin}

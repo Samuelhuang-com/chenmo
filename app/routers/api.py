@@ -25,14 +25,22 @@ async def create_case(request: Request):
         raise HTTPException(429, "提問太頻繁，請稍後再試")
     repo = get_repo()
     try:
-        redo_of = str((await request.json()).get("redo_of", ""))[:64]
+        data = await request.json()
+        redo_of = str(data.get("redo_of", ""))[:64]
+        follow_of = str(data.get("follow_of", ""))[:64]
     except Exception:  # noqa: BLE001  沒有 body 就是一般新問字
-        redo_of = ""
+        redo_of = follow_of = ""
     case = await repo.create_case()
     if redo_of:
         old = await repo.get_by_token(redo_of)
         if old and old.rewrite_requested_at and old.status == CaseStatus.submitted:
             case = await repo.update(case.id, redo_of=redo_of)
+    if follow_of and not redo_of:
+        prev = await repo.get_by_token(follow_of)
+        if prev and prev.status == CaseStatus.answered:
+            # 追問：帶入前面每一輪的「問題」與「字」（只要字，不帶筆跡），方便老師綜合判讀
+            chain = [*prev.follow_chain, {"question": prev.question, "char": prev.char}][-5:]
+            case = await repo.update(case.id, follow_of=follow_of, follow_chain=chain)
     if student:
         case = await repo.update(case.id, owner_email=student["email"], owner_name=student.get("name", ""))
     await hub.to_masters({"type": "case_new", "case": case.model_dump(mode="json")})
