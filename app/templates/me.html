@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block title %}我的問字｜{{ settings.app_name }}{% endblock %}
-{% block nav_me %}<a href="/me/logout">登出</a>{% endblock %}
+{% block nav_me %}{% if student %}<a href="/me/logout">登出</a>{% endif %}{% endblock %}
 {% block main %}
 <div class="history">
   <h1 class="ask-title">我的問字</h1>
+  {% if not student %}
+  <section class="paper" style="text-align:center">
+    <p>查不到先前的問字。</p>
+    <p class="hint">不登入也能問字；若想保存紀錄，下次問字前請先登入。</p>
+    {% if settings.google_login_enabled %}<a class="btn btn-zhu" href="/me/login?next=/me">用 Google 帳號登入</a>{% endif %}
+    <a class="btn" href="/ask">寫字問事</a>
+  </section>
+  {% else %}
   <p class="as-who">{{ student.name }}（{{ student.email }}）</p>
 
   {% if cases %}
@@ -30,6 +38,7 @@
     <p>你還沒有問過字。</p>
     <a class="btn btn-zhu" href="/ask">寫字問事</a>
   </section>
+  {% endif %}
   {% endif %}
 </div>
 {% endblock %}

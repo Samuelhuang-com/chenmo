@@ -347,10 +347,16 @@ def _fake_google(monkeypatch, email, name="學生甲"):
 def test_student_login_and_my_cases(monkeypatch):
     _fake_google(monkeypatch, "student@gmail.com")
     st = TestClient(app)
-    # 需要登入：未登入不能問字
+    # 預設可不登入：/me 只顯示查不到；強制模式才擋問字
+    assert "查不到先前的問字" in st.get("/me").text
+    assert "不登入也可以問字" in st.get("/ask").text
+    anon = TestClient(app)
+    assert anon.post("/api/cases").status_code == 201
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "student_login_required", True)
     assert "先登入，再問字" in st.get("/ask").text
     assert st.post("/api/cases").status_code == 401
-    assert st.get("/me", follow_redirects=False).headers["location"].startswith("/me/login")
+    monkeypatch.setattr(get_settings(), "student_login_required", False)
     # 登入
     r = st.get("/me/login?next=/ask", follow_redirects=True)
     assert r.url.path == "/ask" and "以 學生甲 的身分問字" in r.text
@@ -377,7 +383,7 @@ def test_student_login_and_my_cases(monkeypatch):
     assert "問考運" not in other.get("/me").text
     # 登出
     st.get("/me/logout")
-    assert st.post("/api/cases").status_code == 401
+    assert "查不到先前的問字" in st.get("/me").text
 
 
 def test_teacher_login_still_works_with_shared_callback(monkeypatch):

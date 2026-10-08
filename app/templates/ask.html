@@ -12,7 +12,8 @@
     <p class="hint">我們只會取得你的姓名與 Email，用來保存你的問字紀錄。<br>登入即表示同意<a href="/terms">服務條款</a>與<a href="/privacy">隱私權政策</a>。</p>
   </section>
 {% else %}
-  {% if student %}<p class="as-who">以 {{ student.name }} 的身分問字。<a href="/me">我的問字</a></p>{% endif %}
+  {% if student %}<p class="as-who">以 {{ student.name }} 的身分問字。<a href="/me">我的問字</a></p>
+  {% elif settings.google_login_enabled %}<p class="as-who">不登入也可以問字。想保存紀錄、日後查看老師的解讀，請<a href="/me/login?next=/ask">先用 Google 登入</a>。</p>{% endif %}
 
   <section class="paper">
     <h2>問事者</h2>

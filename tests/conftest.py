@@ -7,7 +7,7 @@ os.environ.update({
     "MASTER_EMAILS": "",
     "GOOGLE_CLIENT_ID": "",
     "GOOGLE_CLIENT_SECRET": "",
-    "STUDENT_LOGIN_REQUIRED": "true",
+    "STUDENT_LOGIN_REQUIRED": "false",
     "ANTHROPIC_API_KEY": "",          # 測試不呼叫真的 AI
     "SMTP_USER": "",
     "SMTP_PASSWORD": "",              # 測試不寄真信

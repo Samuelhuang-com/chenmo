@@ -1,5 +1,4 @@
 """應用程式設定：從環境變數 / .env 讀取。"""
-
 from functools import lru_cache
 
 from pydantic import field_validator
@@ -7,9 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "辰墨軒"
     app_tagline: str = "一字問心・龍墨解疑"
@@ -30,16 +27,14 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     google_client_secret: str | None = None
     # 允許登入老師端的 Google 信箱，逗號分隔
-    master_emails: str = "sam2307@gmail.com"
+    master_emails: str = ""
 
-    # 學生（問事者）是否必須先用 Google 登入才能問字（需已設定 Google 登入才會生效）
-    student_login_required: bool = True
+    # 學生（問事者）是否「必須」先用 Google 登入才能問字。預設 false：可不登入直接問字，登入只是為了保存紀錄
+    student_login_required: bool = False
 
     # 隨喜贊助（請老師喝咖啡）：LINE Pay 收款連結；或放一張收款 QR 圖到 app/static/img/sponsor-qr.png
     sponsor_line_url: str | None = None
-    sponsor_text: str = (
-        "如果這次解讀對你有幫助，歡迎隨喜請老師喝杯咖啡。完全自由，不影響任何服務。"
-    )
+    sponsor_text: str = "如果這次解讀對你有幫助，歡迎隨喜請老師喝杯咖啡。完全自由，不影響任何服務。"
 
     # 老師登入：密碼（本機開發用；正式環境建議留空停用）
     master_password: str | None = None
