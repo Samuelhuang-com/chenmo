@@ -34,6 +34,10 @@ class Settings(BaseSettings):
 
     # 隨喜贊助（請老師喝咖啡）：LINE Pay 收款連結；或放一張收款 QR 圖到 app/static/img/sponsor-qr.png
     sponsor_line_url: str | None = "https://lin.ee/Ti0W37K"
+    # 銀行轉帳（會公開顯示在網站上）。三個欄位任一為空就不顯示
+    sponsor_bank_name: str = "元大商業銀行"
+    sponsor_bank_code: str = "806"
+    sponsor_bank_account: str = "22022970017437"
     sponsor_text: str = "如果這次解讀對你有幫助，歡迎隨喜請老師喝杯咖啡。完全自由，不影響任何服務。"
 
     # 老師登入：密碼（本機開發用；正式環境建議留空停用）

@@ -639,3 +639,23 @@ def test_followup_suggestions_flow():
     assert 'id="follow-note"' in r and 'data-question="什麼時候財運會比較好？"' in r
     # 未解讀的案件不能拿來追問
     assert 'id="follow-note"' not in stu.get("/ask?follow=nope&n=0").text
+
+
+def test_sponsor_bank_box(monkeypatch):
+    from app.config import get_settings
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+    token = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    stu.post(f"/api/cases/{token}/submit", json={"question": "問", "char": "考", **PROFILE})
+    cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    master.post(f"/api/master/cases/{cid}/answer", json={"body": "【解讀】\n好", "reading_html": "<p>好</p>"})
+    assert "銀行轉帳" not in stu.get(f"/c/{token}").text
+    s = get_settings()
+    monkeypatch.setattr(s, "sponsor_bank_name", "測試銀行")
+    monkeypatch.setattr(s, "sponsor_bank_code", "123")
+    monkeypatch.setattr(s, "sponsor_bank_account", "9876543210")
+    page = stu.get(f"/c/{token}").text
+    assert "銀行轉帳" in page and "測試銀行（123）" in page and "9876543210" in page and 'id="bank-copy"' in page

@@ -408,3 +408,8 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .followup::after { content: "  ›"; color: var(--zhu); }
 .followup:hover { border-color: var(--zhu); }
 .follow-note h2 { color: inherit; }
+
+.bank-box { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line, #d9c9a8); }
+.bank-title { font-weight: 600; margin-bottom: 6px !important; }
+.bank-line { margin: 0 auto 6px !important; color: inherit !important; }
+.bank-acct { font-size: 1.15em; letter-spacing: .08em; user-select: all; font-variant-numeric: tabular-nums; }

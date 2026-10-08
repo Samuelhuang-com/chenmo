@@ -14,6 +14,7 @@ os.environ.update({
     "NOTIFY_EMAILS": "",
     "SITE_URL": "",
     "SPONSOR_LINE_URL": "",
+    "SPONSOR_BANK_ACCOUNT": "",
     "SECURE_COOKIES": "false",
     "CASES_PER_IP_PER_HOUR": "1000",  # 測試會建立很多案件
 })

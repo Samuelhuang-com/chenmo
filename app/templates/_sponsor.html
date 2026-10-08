@@ -1,4 +1,5 @@
-{% if settings.sponsor_line_url or sponsor_qr() %}
+{% set bank_ok = settings.sponsor_bank_code and settings.sponsor_bank_account %}
+{% if settings.sponsor_line_url or sponsor_qr() or bank_ok %}
 <section class="paper sponsor">
   <h2>請老師喝杯咖啡</h2>
   <p>{{ settings.sponsor_text }}</p>
@@ -6,5 +7,30 @@
     {% if sponsor_qr() %}<img class="sponsor-qr" src="{{ sponsor_qr() }}" alt="LINE Pay 贊助收款碼" width="160" height="160">{% endif %}
     {% if settings.sponsor_line_url %}<a class="btn btn-line" href="{{ settings.sponsor_line_url }}" target="_blank" rel="noopener">加 LINE 好友・隨喜贊助</a>{% endif %}
   </div>
+  {% if bank_ok %}
+  <div class="bank-box" id="bank-box">
+    <p class="bank-title">也可以銀行轉帳</p>
+    <p class="bank-line">{{ settings.sponsor_bank_name }}（{{ settings.sponsor_bank_code }}）</p>
+    <p class="bank-line"><span class="bank-acct" id="bank-acct">{{ settings.sponsor_bank_account }}</span></p>
+    <button class="btn" type="button" id="bank-copy" data-acct="{{ settings.sponsor_bank_account }}">複製帳號</button>
+    <span class="hint" id="bank-copy-msg" role="status"></span>
+  </div>
+  <script>
+  (function () {
+    var b = document.getElementById("bank-copy"), m = document.getElementById("bank-copy-msg");
+    if (!b) return;
+    b.addEventListener("click", function () {
+      var t = b.dataset.acct;
+      function ok() { m.textContent = " 已複製"; setTimeout(function () { m.textContent = ""; }, 2000); }
+      function fallback() {
+        var r = document.createRange(); r.selectNodeContents(document.getElementById("bank-acct"));
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); m.textContent = " 請長按複製";
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, fallback);
+      else fallback();
+    });
+  })();
+  </script>
+  {% endif %}
 </section>
 {% endif %}
