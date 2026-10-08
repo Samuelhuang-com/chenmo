@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}解字｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">回案前</a><a href="/master/history">已解紀錄</a><a href="/master/logout">登出</a>{% endblock %}
+{% block main %}
+<div class="bench" data-case-id="{{ case.id }}" id="bench">
+  <div>
+    <section class="paper">
+      <div class="bench-pad pad-box grid-paper">
+        <div class="pad-guide" id="pad-guide" aria-hidden="true">{% if case.char_source == "picked" %}{{ case.char }}{% endif %}</div>
+        <canvas id="pad" aria-label="問事者的字跡"></canvas>
+      </div>
+      <div class="replay-bar">
+        <button class="btn" type="button" id="play">播放</button>
+        <button class="btn" type="button" id="prev">上一筆</button>
+        <button class="btn" type="button" id="next">下一筆</button>
+        <button class="btn" type="button" data-speed="0.5">0.5×</button>
+        <button class="btn" type="button" data-speed="1" aria-pressed="true">1×</button>
+        <button class="btn" type="button" data-speed="2">2×</button>
+      </div>
+      <input class="progress" type="range" id="progress" min="0" max="1000" value="1000" aria-label="重播進度">
+      <div class="replay-bar">
+        <label><input type="checkbox" id="opt-numbers" checked> 標示筆順</label>
+        <label><input type="checkbox" id="opt-erased"> 含擦除過程</label>
+        <span class="hint" id="live-tag" style="margin:0"></span>
+      </div>
+    </section>
+
+    <section class="paper">
+      <h2>筆跡紀錄</h2>
+      <dl class="facts" id="facts"></dl>
+      <table class="stroke-table">
+        <thead><tr><th>筆</th><th>書寫</th><th>筆前停頓</th></tr></thead>
+        <tbody id="stroke-rows"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <div>
+    <section class="paper">
+      <h2>所問</h2>
+      <p class="case-profile" id="profile">{{ case.profile_text or "（尚未填寫年次與性別）" }}</p>
+      <p class="case-profile picked-note" id="pick-info"{% if case.char_source != "picked" %} hidden{% endif %}>{% if case.char_source == "picked" %}自選字「{{ case.char }}」{% if case.pick_rounds > 1 %}，換到第 {{ case.pick_rounds }} 組才選定{% endif %}。候選：{{ case.offered | join("、") }}{% endif %}</p>
+      <p class="case-q" id="question">{{ case.question or "（尚未填寫）" }}</p>
+      <p class="case-meta">
+        <span class="status-pill" id="status">{{ {"drafting":"書寫中","submitted":"待解","answered":"已解"}[case.status.value] }}</span>
+        {% if case.char and case.char_source != "picked" %}　自述所寫：<b style="font-family:var(--kai);font-size:1.4em">{{ case.char }}</b>{% endif %}
+      </p>
+    </section>
+
+    <section class="paper answer-box">
+      <h2><label for="answer">解字</label></h2>
+      <div class="jiezi-bar">
+        <label for="jiezi-char">此字</label>
+        <input type="text" id="jiezi-char" maxlength="2" autocomplete="off" value="{{ case.char }}">
+        <button class="btn" type="button" id="jiezi-run">帶出字資料</button>
+        <button class="btn" type="button" id="jiezi-undo" hidden>復原原文</button>
+      </div>
+      <p class="hint" id="jiezi-state">部首、筆畫、五行與《說文解字》由字庫帶出；字義與解讀為 AI 草稿，請審閱後再送出。</p>
+      <textarea id="answer" data-auto="{{ '1' if (not case.notes and not case.answer and not case.draft) else '' }}">{% if case.notes %}{{ case.notes }}{% elif case.answer %}【解讀】
+{{ case.answer }}{% elif case.draft %}{{ case.draft }}{% else %}【此字】
+
+【五行】
+
+【古字說法】
+
+【字義】
+
+【解讀】
+{% endif %}</textarea>
+      <p class="hint" id="save-state" aria-live="polite"></p>
+
+      <div class="preview">
+        <h3>問事者會看到的內容</h3>
+        <p class="hint">只會送出【解讀】這一段，其餘四段只有老師看得到。「AI 草稿」標記送出時會自動移除。</p>
+        <div class="answer" id="preview"></div>
+      </div>
+
+      <div class="submit-row">
+        <span class="conn" id="sent-info">{% if case.status.value == "answered" %}第 {{ case.revision }} 次送出，{{ case.answered_at | fmt_ms }}{% endif %}</span>
+        <span class="actions">
+          <button class="btn" type="button" id="retract" {% if case.status.value != "answered" %}hidden{% endif %}>收回</button>
+          <button class="btn btn-zhu" type="button" id="send" {% if case.status.value != "submitted" %}disabled{% endif %}>{% if case.revision %}重送解讀{% else %}送出解讀{% endif %}</button>
+        </span>
+      </div>
+      <p class="form-error" id="error" role="alert"></p>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/master-case.js"></script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}老師登入｜{{ settings.app_name }}{% endblock %}
+{% block nav %}{% endblock %}
+{% block main %}
+<section class="paper login">
+  <h2>解題老師登入</h2>
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+  {% if google %}
+    <a class="btn" style="width:100%" href="/master/auth/google">使用 Google 帳號登入</a>
+  {% endif %}
+  {% if google and password %}<p class="divider">或</p>{% endif %}
+  {% if password %}
+  <form method="post" action="/master/login">
+    <label for="pw" class="hint">開發用密碼</label>
+    <input type="password" id="pw" name="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">登入</button>
+  </form>
+  {% endif %}
+  {% if not google and not password %}
+    <p class="hint">尚未設定登入方式。請在環境變數設定 GOOGLE_CLIENT_ID／GOOGLE_CLIENT_SECRET，或本機開發時設定 MASTER_PASSWORD。</p>
+  {% endif %}
+</section>
+{% endblock %}

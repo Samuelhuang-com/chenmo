@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}問字｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/">首頁</a>{% endblock %}
+{% block main %}
+<div class="ask-wrap">
+  <h1 class="ask-title">問字</h1>
+
+  <section class="paper">
+    <h2>問事者</h2>
+    <div class="profile">
+      <div class="field">
+        <label for="birth_year">年次</label>
+        <span class="roc">民國 <input type="number" id="birth_year" inputmode="numeric" min="1" max="{{ roc_now }}" placeholder="75" aria-describedby="by-detail"> 年次</span>
+        <span class="hint" id="by-detail"></span>
+      </div>
+      <fieldset class="field">
+        <legend>性別</legend>
+        <span class="seg">
+          <input type="radio" name="gender" id="g-m" value="男"><label for="g-m">男</label>
+          <input type="radio" name="gender" id="g-f" value="女"><label for="g-f">女</label>
+        </span>
+      </fieldset>
+    </div>
+  </section>
+
+  <section class="paper">
+    <h2><label for="question">所問何事</label></h2>
+    <p class="hint">一百字以內，說清楚想問的方向即可。</p>
+    <textarea id="question" rows="3" data-max="{{ max_chars }}" placeholder="例如：今年想換工作，時機是否合適？"></textarea>
+    <div class="counter" id="counter" aria-live="polite">0 / {{ max_chars }}</div>
+  </section>
+
+  <section class="paper">
+    <h2>心中一字</h2>
+    <p class="hint" id="pad-hint">在格中寫下浮現的第一個字。筆順與停頓都會保留，寫錯也不必在意。</p>
+    <div class="pad-box grid-paper" id="pad-box">
+      <div class="pad-guide" id="pad-guide" aria-hidden="true"></div>
+      <canvas id="pad" aria-label="手寫字格"></canvas>
+    </div>
+    <div class="pad-tools">
+      <button class="btn" type="button" id="undo">復原上一筆</button>
+      <button class="btn" type="button" id="clear">清除重寫</button>
+      <button class="btn pick-open" type="button" id="pick-open" aria-expanded="false" aria-controls="pick-panel">自選字</button>
+    </div>
+
+    <div class="pick-panel" id="pick-panel" hidden>
+      <p class="pick-lead">不知道寫什麼字也沒關係。看一眼，選一個最有感覺的字。</p>
+      <div class="pick-grid" id="pick-grid" role="group" aria-label="候選字"></div>
+      <div class="pick-tools">
+        <button class="btn" type="button" id="pick-shuffle">換一組</button>
+        <button class="btn" type="button" id="pick-close">不選了，我自己寫</button>
+      </div>
+    </div>
+
+    <div class="char-input">
+      <input type="text" id="char" maxlength="2" autocomplete="off" aria-describedby="char-help">
+      <label for="char" id="char-help">寫的是哪個字？選填，可幫助老師辨識。</label>
+    </div>
+  </section>
+
+  <div class="submit-row">
+    <span class="conn" id="conn" data-state="idle">落筆後即與老師連線</span>
+    <button class="btn btn-zhu" type="button" id="submit">呈送</button>
+  </div>
+  <p class="form-error" id="error" role="alert"></p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/ask.js"></script>
+{% endblock %}

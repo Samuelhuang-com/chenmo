@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}已解紀錄｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">回案前</a><a href="/master/logout">登出</a>{% endblock %}
+{% block main %}
+<div class="history">
+  <h1 class="ask-title">已解紀錄</h1>
+  <form class="search" method="get" action="/master/history" role="search">
+    <label for="q" class="visually-hidden">搜尋</label>
+    <input type="text" id="q" name="q" value="{{ q }}" placeholder="輸入字或問題關鍵字，例如：王、工作">
+    <button class="btn on-yan" type="submit">搜尋</button>
+    {% if q %}<a class="btn on-yan" href="/master/history">清除</a>{% endif %}
+  </form>
+
+  {% if cases %}
+  <ol class="h-list">
+    {% for c in cases %}
+    <li>
+      <a class="h-item" href="/master/case/{{ c.id }}">
+        <span class="t-char grid-paper">{{ c.char or c.draft_char }}</span>
+        <span class="h-body">
+          <span class="h-q">{{ c.question or "（未填寫問題）" }}{% if c.char_source == "picked" %}<span class="tag-pick">自選</span>{% endif %}</span>
+          <span class="h-a">{{ c.answer[:90] }}{% if c.answer|length > 90 %}……{% endif %}</span>
+          <span class="h-meta">{% if c.profile_text %}{{ c.profile_text }}，{% endif %}解於 {{ c.answered_at | fmt_ms }}{% if c.revision > 1 %}，曾收回重送，共送出 {{ c.revision }} 次{% endif %}</span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+  <nav class="pager">
+    {% if page > 1 %}<a class="btn on-yan" href="?q={{ q|urlencode }}&page={{ page - 1 }}">上一頁</a>{% endif %}
+    <span>第 {{ page }} 頁</span>
+    {% if has_next %}<a class="btn on-yan" href="?q={{ q|urlencode }}&page={{ page + 1 }}">下一頁</a>{% endif %}
+  </nav>
+  {% else %}
+  <p class="empty">{% if q %}找不到含「{{ q }}」的已解紀錄。{% else %}還沒有解過的字。解完的字會出現在這裡。{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

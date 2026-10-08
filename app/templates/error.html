@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ code }}｜{{ settings.app_name }}{% endblock %}
+{% block main %}
+<section class="paper" style="max-width:520px;margin:40px auto">
+  <h2>{{ message }}</h2>
+  <p class="hint">請確認網址是否正確，或回到首頁重新問字。</p>
+  <a class="btn" href="/">回首頁</a>
+</section>
+{% endblock %}

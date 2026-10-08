@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#262c2e">
+  <title>{% block title %}{{ settings.app_name }}｜{{ settings.app_tagline }}{% endblock %}</title>
+  <meta name="description" content="辰墨軒線上測字：寫下一個字、說出心中所問，由解題老師親自為您解字。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/main.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="site-head">
+    <a class="brand" href="/" aria-label="{{ settings.app_name }} 首頁">
+      <span class="seal" aria-hidden="true"><span>辰</span><span>墨</span></span>
+      <span class="brand-name">{{ settings.app_name }}</span>
+    </a>
+    <nav class="site-nav">{% block nav %}<a href="/ask">問字</a>{% endblock %}</nav>
+  </header>
+  <main>{% block main %}{% endblock %}</main>
+  <footer class="site-foot">
+    © {{ settings.app_name }}
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
