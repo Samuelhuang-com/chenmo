@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     student_login_required: bool = False
 
     # 隨喜贊助（請老師喝咖啡）：LINE Pay 收款連結；或放一張收款 QR 圖到 app/static/img/sponsor-qr.png
-    sponsor_line_url: str | None = None
+    sponsor_line_url: str | None = "https://lin.ee/Ti0W37K"
     sponsor_text: str = "如果這次解讀對你有幫助，歡迎隨喜請老師喝杯咖啡。完全自由，不影響任何服務。"
 
     # 老師登入：密碼（本機開發用；正式環境建議留空停用）

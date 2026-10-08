@@ -21,7 +21,7 @@ async def index(request: Request, source: str = ""):
 
 
 @router.get("/ask")
-async def ask(request: Request, redo: str = ""):
+async def ask(request: Request, redo: str = "", follow: str = "", n: int = 0):
     from app.auth import current_student
     from app.models import roc_year_now
     student = current_student(request)
@@ -32,8 +32,16 @@ async def ask(request: Request, redo: str = ""):
         if old and old.rewrite_requested_at and old.status.value == "submitted":
             redo_case = {"token": old.token, "question": old.question, "birth_year": old.birth_year,
                          "gender": old.gender, "reason": old.rewrite_reason}
+    follow_case = None
+    if follow and not redo_case:
+        from app.services.followups import suggest
+        old = await get_repo().get_by_token(follow)
+        if old and old.status.value == "answered":
+            items = suggest(old.question)
+            follow_case = {"token": old.token, "prev": old.question, "birth_year": old.birth_year,
+                           "gender": old.gender, "question": items[n] if 0 <= n < len(items) else ""}
     return templates.TemplateResponse(request, "ask.html",
-                                      {"max_chars": get_settings().question_max_chars,
+                                      {"follow": follow_case, "max_chars": get_settings().question_max_chars,
                                        "roc_now": roc_year_now(),
                                        "student": student, "need_login": need_login,
                                        "redo": redo_case})
@@ -64,8 +72,10 @@ async def case_page(request: Request, token: str, claim: str = ""):
     if claim and student and not case.owner_email and case.status.value != "drafting":
         case = await repo.update(case.id, owner_email=student["email"], owner_name=student.get("name", ""))
         claimed = True
+    from app.services.followups import suggest
     return templates.TemplateResponse(request, "case.html",
-                                      {"case": case, "strokes": strokes, "student": student,
+                                      {"followups": suggest(case.question) if case.status.value == "answered" else [],
+                                       "case": case, "strokes": strokes, "student": student,
                                        "is_owner": bool(student and student["email"] == case.owner_email),
                                        "claimed": claimed,
                                        "can_claim": bool(not case.owner_email and case.status.value != "drafting")})

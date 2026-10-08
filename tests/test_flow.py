@@ -616,3 +616,26 @@ def test_workbench_shows_student_link():
     cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
     page = master.get(f"/master/case/{cid}").text
     assert "給問事者的連結" in page and f'data-token="{token}"' in page and f'href="/c/{token}"' in page
+
+
+def test_followup_suggestions_flow():
+    from app.services.followups import suggest
+    assert len(suggest("我的財運如何")) == 3 and "財運" in suggest("我的財運如何")[0]
+    assert len(suggest("隨便問問")) == 3
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+    token = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    stu.post(f"/api/cases/{token}/submit", json={"question": "我的財運如何", "char": "財", **PROFILE})
+    # 還沒解讀：不顯示追問
+    assert "想再多問一點" not in stu.get(f"/c/{token}").text
+    cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    master.post(f"/api/master/cases/{cid}/answer", json={"body": "資料\n\n【解讀】\n好", "reading_html": "<p>好</p>"})
+    page = stu.get(f"/c/{token}").text
+    assert "想再多問一點" in page and f"/ask?follow={token}&amp;n=0" in page or f"/ask?follow={token}&n=0" in page
+    r = stu.get(f"/ask?follow={token}&n=0").text
+    assert 'id="follow-note"' in r and 'data-question="什麼時候財運會比較好？"' in r
+    # 未解讀的案件不能拿來追問
+    assert 'id="follow-note"' not in stu.get("/ask?follow=nope&n=0").text

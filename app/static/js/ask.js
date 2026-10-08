@@ -200,8 +200,10 @@ $("submit").onclick = async () => {
 };
 
 // ---- 老師請重寫：帶入原本的問題、年次、性別 ----
-if (redoNote) {
-  const d = redoNote.dataset;
+const followNote = document.getElementById("follow-note");
+const prefillNote = redoNote || followNote;
+if (prefillNote) {
+  const d = prefillNote.dataset;
   q.value = d.question || "";
   q.dispatchEvent(new Event("input"));
   if (d.birth) { byInput.value = d.birth; byInput.dispatchEvent(new Event("input")); }

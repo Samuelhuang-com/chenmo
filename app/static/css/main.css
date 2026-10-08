@@ -402,3 +402,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .share-box h3 { font-family: var(--kai); font-weight: 400; font-size: var(--step-1); margin: 0 0 4px; }
 .share-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .share-row input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid #b9ab8f; border-radius: 6px; background: #fffdf8; font-size: .9rem; }
+
+.followup-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.followup { display: block; padding: 11px 14px; border: 1px solid var(--line, #d9c9a8); border-radius: 10px; text-decoration: none; color: inherit; background: rgba(255,255,255,.35); }
+.followup::after { content: "  ›"; color: var(--zhu); }
+.followup:hover { border-color: var(--zhu); }
+.follow-note h2 { color: inherit; }

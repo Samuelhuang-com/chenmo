@@ -8,8 +8,11 @@ MASTER_EMAILS="${MASTER_EMAILS:-sam2307@gmail.com}"   # 多位用逗號分隔
 # 新問字 Email 通知：寄件 Gmail 與收件人（密碼放 Secret Manager：chenmo-smtp-password）
 SMTP_USER="${SMTP_USER:-sam2307@gmail.com}"
 NOTIFY_EMAILS="${NOTIFY_EMAILS:-$MASTER_EMAILS}"
-# 隨喜贊助：LINE Pay 收款連結（留空則只顯示 QR 圖，兩者都沒有就不顯示贊助區塊）
-SPONSOR_LINE_URL="${SPONSOR_LINE_URL:-}"
+# Logo 款式：A 金印／B 玄底金辰／C 金環龍盤／D 金格朱印／E 金錢圓章
+BRAND_LOGO="${BRAND_LOGO:-C}"
+
+# 隨喜贊助：LINE 官方帳號加好友連結（老師再傳 LINE Pay 收款連結給想贊助的人）（留空則只顯示 QR 圖，兩者都沒有就不顯示贊助區塊）
+SPONSOR_LINE_URL="${SPONSOR_LINE_URL:-https://lin.ee/Ti0W37K}"
 
 if [[ "$PROJECT_ID" == 請填* || "$MASTER_EMAILS" == 請填* ]]; then
   echo "❌ 請先編輯 deploy/config.sh，填入 PROJECT_ID 與 MASTER_EMAILS" >&2

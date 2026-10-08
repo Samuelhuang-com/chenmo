@@ -4,7 +4,7 @@
   <p>{{ settings.sponsor_text }}</p>
   <div class="sponsor-row">
     {% if sponsor_qr() %}<img class="sponsor-qr" src="{{ sponsor_qr() }}" alt="LINE Pay 贊助收款碼" width="160" height="160">{% endif %}
-    {% if settings.sponsor_line_url %}<a class="btn btn-line" href="{{ settings.sponsor_line_url }}" target="_blank" rel="noopener">用 LINE 贊助</a>{% endif %}
+    {% if settings.sponsor_line_url %}<a class="btn btn-line" href="{{ settings.sponsor_line_url }}" target="_blank" rel="noopener">加 LINE 好友・隨喜贊助</a>{% endif %}
   </div>
 </section>
 {% endif %}

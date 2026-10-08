@@ -22,6 +22,15 @@
     {% if case.answer_html %}<div class="answer rich">{{ case.answer_html | safe }}</div>{% else %}<div class="answer">{{ case.answer }}</div>{% endif %}
     <p class="answer-sign">解於 {{ case.answered_at | fmt_ms }}{% if case.reading_edited_at %}（老師於 {{ case.reading_edited_at | fmt_ms }} 更新）{% endif %}</p>
   </section>
+  {% if followups %}
+  <section class="paper followups">
+    <h2>想再多問一點？</h2>
+    <p class="hint">點一個問題，再寫一個字，老師會接著為你解讀。</p>
+    <div class="followup-list">
+      {% for f in followups %}<a class="followup" href="/ask?follow={{ case.token }}&n={{ loop.index0 }}">{{ f }}</a>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
   {% include "_sponsor.html" %}
   {% elif case.status.value == "submitted" and case.rewrite_requested_at %}
   <section class="paper redo-note" id="waiting">
