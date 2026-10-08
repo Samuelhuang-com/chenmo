@@ -603,3 +603,16 @@ def test_rich_reading_sanitized_and_shown():
     # 空內容不能送出
     r = master.put(f"/api/master/cases/{cid}/reading", json={"body": "資料", "reading_html": "<p><br></p>"})
     assert r.status_code == 422
+
+
+def test_workbench_shows_student_link():
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+    token = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    stu.post(f"/api/cases/{token}/submit", json={"question": "問", "char": "考", **PROFILE})
+    cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    page = master.get(f"/master/case/{cid}").text
+    assert "給問事者的連結" in page and f'data-token="{token}"' in page and f'href="/c/{token}"' in page

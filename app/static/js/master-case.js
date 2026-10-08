@@ -413,3 +413,17 @@ readingEl.addEventListener("paste", e => {
   e.preventDefault();
   document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain"));
 });
+
+// ---- 給問事者的連結 ----
+const shareBox = $("share-box");
+const shareUrl = (shareBox.dataset.site || location.origin) + "/c/" + shareBox.dataset.token;
+$("share-url").value = shareUrl;
+async function copyText(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); $("share-state").textContent = okMsg; }
+  catch { $("share-url").select(); document.execCommand("copy"); $("share-state").textContent = okMsg; }
+}
+$("share-url").addEventListener("focus", e => e.target.select());
+$("share-copy").onclick = () => copyText(shareUrl, "已複製連結。");
+$("share-copy-msg").onclick = () => copyText(
+  `您好，您在辰墨軒問的字，老師已經解讀完成了。\n請點下面的連結查看您寫的字和老師的解讀：\n${shareUrl}`,
+  "已複製通知訊息，可以直接貼到 LINE 或簡訊。");

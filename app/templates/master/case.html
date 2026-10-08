@@ -110,6 +110,18 @@
         <div class="answer" id="preview"></div>
       </div>
 
+      <div class="share-box" id="share-box" data-token="{{ case.token }}" data-site="{{ site_url }}">
+        <h3>給問事者的連結</h3>
+        <p class="hint">問事者寫完就關掉頁面也沒關係。把這個連結傳給他（LINE、簡訊都可以），他點開就能看到自己寫的字和你的解讀。</p>
+        <div class="share-row">
+          <input type="text" id="share-url" readonly aria-label="問事者連結" value="">
+          <button class="btn" type="button" id="share-copy">複製連結</button>
+          <a class="btn" id="share-open" href="/c/{{ case.token }}" target="_blank" rel="noopener">開啟看看</a>
+        </div>
+        <button class="btn" type="button" id="share-copy-msg">複製整段通知訊息</button>
+        <p class="hint" id="share-state" aria-live="polite"></p>
+      </div>
+
       <div class="submit-row">
         <span class="conn" id="sent-info">{% if case.status.value == "answered" %}第 {{ case.revision }} 次送出，{{ case.answered_at | fmt_ms }}{% if case.reading_edited_at %}，已更新{% endif %}{% endif %}</span>
         <span class="actions">

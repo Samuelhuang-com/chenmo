@@ -156,7 +156,8 @@ async def workbench(request: Request, case_id: str, master: dict = Depends(requi
     from app.services.sections import AI_MARK as _AI, NO_AI_MARK
     reading_init = reading_init.replace(NO_AI_MARK, "")
     return templates.TemplateResponse(request, "master/case.html",
-                                      {"master": master, "case": case, "reading_init": reading_init})
+                                      {"master": master, "case": case, "reading_init": reading_init,
+                                       "site_url": (get_settings().site_url or "").rstrip("/")})
 
 
 # ---------------- API ----------------

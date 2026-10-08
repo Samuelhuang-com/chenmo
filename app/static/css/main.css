@@ -396,3 +396,9 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .rte-body:empty::before, .rte-body[data-empty="1"]::before { content: attr(data-placeholder); color: #a79d86; }
 
 #jiezi-state.warn { color: var(--zhu); font-weight: 600; }
+
+/* 給問事者的連結 */
+.share-box { margin-top: 18px; padding: 14px 16px; border: 1px solid #d8cdb4; border-radius: 10px; background: rgba(255,255,255,.5); }
+.share-box h3 { font-family: var(--kai); font-weight: 400; font-size: var(--step-1); margin: 0 0 4px; }
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.share-row input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; border: 1px solid #b9ab8f; border-radius: 6px; background: #fffdf8; font-size: .9rem; }
