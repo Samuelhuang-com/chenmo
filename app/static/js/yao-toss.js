@@ -203,21 +203,71 @@ function init() {
     if (soundOn) { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume?.(); clink(); }
   });
   paintSound();
+  // 銅錢掉在硬地上：每枚錢彈跳數次（間隔越來越短、越來越輕），每次撞擊＝一聲短促的「喀」＋金屬的餘音，
+  // 最後是細碎的滾動震顫。全部用 Web Audio 合成，不需要音檔。
+  // 共 4 組音色，每次進入頁面換一組（不會連續兩次相同）；每一擲內部還有隨機變化。
+  const SOUNDS = [
+    { name: "清脆黃銅", f: [2100, 3400], ratios: [1, 1.593, 2.136, 2.653, 3.16], amps: [1, .7, .5, .32, .2], decay: [.32, .22, .15, .1, .07],
+      coins: 3, bounces: 5, gap: [.17, .22], gapK: .68, volK: .55, rattle: 7, click: .55, clickF: 1.6, tone: 1 },
+    { name: "厚重老錢", f: [1400, 2200], ratios: [1, 1.47, 2.02, 2.71, 3.3], amps: [1, .85, .55, .35, .22], decay: [.5, .36, .24, .15, .1],
+      coins: 3, bounces: 4, gap: [.2, .27], gapK: .7, volK: .5, rattle: 5, click: .8, clickF: 1.2, tone: 1.1 },
+    { name: "細碎小錢", f: [2900, 4200], ratios: [1, 1.62, 2.21, 2.9, 3.4], amps: [1, .6, .4, .25, .15], decay: [.2, .14, .1, .07, .05],
+      coins: 4, bounces: 6, gap: [.11, .16], gapK: .72, volK: .6, rattle: 11, click: .5, clickF: 1.8, tone: .9 },
+    { name: "落在石板", f: [1900, 2800], ratios: [1, 1.71, 2.32, 2.95, 3.6], amps: [1, .5, .45, .3, .25], decay: [.26, .2, .14, .1, .08],
+      coins: 2, bounces: 6, gap: [.13, .19], gapK: .74, volK: .6, rattle: 8, click: 1.1, clickF: 2.2, tone: .8 },
+  ];
+  let sndIdx = 0;
+  try {
+    const last = +(localStorage.getItem("yao-snd-last") ?? -1);
+    sndIdx = Math.floor(Math.random() * SOUNDS.length);
+    if (sndIdx === last) sndIdx = (sndIdx + 1 + Math.floor(Math.random() * (SOUNDS.length - 1))) % SOUNDS.length;
+    localStorage.setItem("yao-snd-last", String(sndIdx));
+  } catch { sndIdx = Math.floor(Math.random() * SOUNDS.length); }
+  function playCoins(ac, dest, t0, P) {
+    P = P || SOUNDS[0];
+    const sr = ac.sampleRate;
+    const nb = ac.createBuffer(1, Math.floor(sr * 0.5), sr), nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    function hit(t, f0, vol) {
+      // 撞擊瞬間的「喀」：很短的高頻噪音
+      const n = ac.createBufferSource(); n.buffer = nb;
+      const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f0 * P.clickF; bp.Q.value = 0.9;
+      const ng = ac.createGain();
+      ng.gain.setValueAtTime(vol * P.click, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
+      n.connect(bp).connect(ng).connect(dest); n.start(t, Math.random() * 0.3); n.stop(t + 0.03);
+      // 金屬餘音（泛音不是整數倍，才像金屬）
+      P.ratios.forEach((r, k) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = "sine"; o.frequency.value = f0 * r * (1 + (Math.random() - 0.5) * 0.004);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol * 0.16 * P.tone * P.amps[k], t + 0.0015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + P.decay[k] * (0.5 + vol * 0.5));
+        o.connect(g).connect(dest); o.start(t); o.stop(t + P.decay[k] + 0.05);
+      });
+    }
+    let end = t0;
+    for (let c = 0; c < P.coins; c++) {
+      let t = t0 + c * 0.045 + Math.random() * 0.03;                       // 錢先後落地
+      const f0 = P.f[0] + Math.random() * (P.f[1] - P.f[0]);               // 每枚錢音高略不同
+      let gap = P.gap[0] + Math.random() * (P.gap[1] - P.gap[0]), vol = 1 - c * 0.1;
+      for (let b = 0; b < P.bounces; b++) {                                // 彈跳：越彈越快越輕
+        hit(t, f0 * (1 + b * 0.012), vol);
+        t += gap; gap *= P.gapK; vol *= P.volK;
+      }
+      for (let k = 0; k < P.rattle; k++) {                                 // 最後在地上滾動的細碎震顫
+        hit(t, f0 * 1.05, vol * 0.5); vol *= 0.8; t += Math.max(0.028 - k * 0.0025, 0.012);
+      }
+      end = Math.max(end, t);
+    }
+    return end;
+  }
   function clink() {
     if (!soundOn) return;
     try {
       ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-      [0, 0.09, 0.16].forEach((delay, i) => {
-        const t = ctx.currentTime + delay;
-        [2300 + i * 260, 3700 + i * 180, 5200].forEach((f, k) => {
-          const o = ctx.createOscillator(), g = ctx.createGain();
-          o.type = "sine"; o.frequency.value = f;
-          g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(0.12 / (k + 1), t + 0.004);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35 - k * 0.08);
-          o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.4);
-        });
-      });
+      const comp = ctx.createDynamicsCompressor(), master = ctx.createGain();
+      master.gain.value = 1.6; comp.connect(master).connect(ctx.destination);
+      playCoins(ctx, comp, ctx.currentTime + 0.02, SOUNDS[sndIdx]);
     } catch {}
   }
 

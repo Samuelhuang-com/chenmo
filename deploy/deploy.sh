@@ -31,6 +31,11 @@ fi
 PROJECT_NUMBER="${PROJECT_NUMBER:-$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)' 2>/dev/null || true)}"
 SITE_URL="https://$SERVICE-$PROJECT_NUMBER.$REGION.run.app"
 
+# 版次：這次部署的 commit 訊息（git_push_auto.bat 產生的 fix: YYYYMMDD-NNN）、短 sha、部署時間，顯示在 /master/system
+APP_VERSION="$(git log -1 --pretty=%s 2>/dev/null | tr -d ';\r\n' || true)"
+APP_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || true)"
+APP_DEPLOYED_AT="$(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+
 # max-instances=1：第一階段即時連線中樞在記憶體內，必須只有一台。
 #   流量變大時改用 Redis（Memorystore）再放寬。
 # timeout=3600：WebSocket 單次連線上限 60 分鐘，前端會自動重連。
@@ -45,7 +50,7 @@ gcloud run deploy "$SERVICE" \
   --timeout 3600 \
   --session-affinity \
   --cpu 1 --memory 512Mi \
-  --set-env-vars "^;^REPO_BACKEND=firestore;GCP_PROJECT=$PROJECT_ID;SECURE_COOKIES=true;MASTER_EMAILS=$MASTER_EMAILS;SMTP_USER=$SMTP_USER;NOTIFY_EMAILS=$NOTIFY_EMAILS;SITE_URL=$SITE_URL;SPONSOR_LINE_URL=$SPONSOR_LINE_URL;BRAND_LOGO=$BRAND_LOGO" \
+  --set-env-vars "^;^REPO_BACKEND=firestore;GCP_PROJECT=$PROJECT_ID;SECURE_COOKIES=true;MASTER_EMAILS=$MASTER_EMAILS;SMTP_USER=$SMTP_USER;NOTIFY_EMAILS=$NOTIFY_EMAILS;SITE_URL=$SITE_URL;SPONSOR_LINE_URL=$SPONSOR_LINE_URL;BRAND_LOGO=$BRAND_LOGO;APP_VERSION=$APP_VERSION;APP_COMMIT=$APP_COMMIT;APP_DEPLOYED_AT=$APP_DEPLOYED_AT" \
   --set-secrets "$SECRETS"
 
 URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')

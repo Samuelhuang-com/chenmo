@@ -189,7 +189,18 @@ async def system_page(request: Request, master: dict = Depends(require_master_pa
     """系統狀態：確認部署版本、AI、寄信、贊助等設定是否生效。"""
     import os
     s = get_settings()
+    ver, commit, deployed = (os.environ.get(k, "") for k in ("APP_VERSION", "APP_COMMIT", "APP_DEPLOYED_AT"))
+    if not ver:   # 本機執行：直接讀目前的 git commit
+        try:
+            import subprocess
+            run = lambda *a: subprocess.run(["git", *a], capture_output=True, text=True, timeout=3,
+                                            cwd=os.path.dirname(os.path.dirname(os.path.dirname(__file__)))).stdout.strip()
+            ver, commit = run("log", "-1", "--pretty=%s"), run("rev-parse", "--short", "HEAD")
+        except Exception:
+            ver = commit = ""
     checks = [
+        ("版次", (ver + (f"（{commit}）" if commit else "")) if ver else "未知（部署時沒有帶入版次）"),
+        ("部署時間", deployed or "—"),
         ("部署版本（Cloud Run revision）", os.environ.get("K_REVISION") or "本機執行（沒有版本號）"),
         ("網站網址 SITE_URL", s.site_url or "未設定（信中連結會用目前網址）"),
         ("AI 金鑰", "已設定" if s.anthropic_api_key else "未設定"),
