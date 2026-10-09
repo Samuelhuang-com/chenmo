@@ -54,6 +54,7 @@ class Case(BaseModel):
     draft_char: str = ""
     rewrite_requested_at: int | None = None   # 老師請問事者重寫的時間
     rewrite_reason: str = ""             # 重寫原因（會顯示給問事者）
+    nickname: str = ""                   # 問事者自填的姓氏／暱稱／英文名（老師辨識用）
     show_sponsor: bool = False           # 老師決定是否在此問事者的頁面顯示「請老師喝杯咖啡」
     follow_of: str = ""                  # 追問：指向上一筆案件的 token
     follow_chain: list[dict] = Field(default_factory=list)   # 追問脈絡：[{"question","char"}…]，由舊到新（只存問題與字）
@@ -73,7 +74,7 @@ class Case(BaseModel):
     def public_dict(self) -> dict:
         """給問事者看的欄位（不含 id）。"""
         return self.model_dump(include={"token", "question", "char", "char_source", "birth_year",
-                                        "gender", "profile_text",
+                                        "gender", "nickname", "profile_text",
                                         "status", "stroke_count",
                                         "created_at", "submitted_at", "answered_at", "answer",
                                         "rewrite_requested_at", "rewrite_reason", "reading_edited_at",
@@ -100,6 +101,7 @@ class SubmitIn(BaseModel):
     char: str = ""
     birth_year: int
     gender: str
+    nickname: str = Field(default="", max_length=30)   # 姓氏／暱稱／英文名（選填，老師辨識用）
     picked: bool = False                 # 是否為自選字
     offered: list[str] = Field(default_factory=list)
     rounds: int = Field(default=1, ge=1, le=999)
@@ -110,6 +112,11 @@ class SubmitIn(BaseModel):
         if not 1 <= v <= roc_year_now():
             raise ValueError(f"年次請填民國 1 到 {roc_year_now()} 年")
         return v
+
+    @field_validator("nickname")
+    @classmethod
+    def _nn(cls, v: str) -> str:
+        return " ".join(v.split())
 
     @field_validator("gender")
     @classmethod

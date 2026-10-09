@@ -83,7 +83,7 @@ async def submit_case(token: str, body: SubmitIn, request: Request):
             raise HTTPException(422, "請先在字格中寫下一個字，或按「自選字」選一個字")
         extra = {"char_source": "written", "offered": [], "pick_rounds": 0}
     case = await repo.update(case.id, **extra, question=body.question, char=body.char,
-                             birth_year=body.birth_year, gender=body.gender,
+                             birth_year=body.birth_year, gender=body.gender, nickname=body.nickname,
                              status=CaseStatus.submitted, submitted_at=now_ms())
     if case.redo_of:   # 重寫完成：老師要求重寫的舊案件由新的取代
         old = await repo.get_by_token(case.redo_of)

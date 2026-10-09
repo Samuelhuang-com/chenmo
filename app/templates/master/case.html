@@ -40,7 +40,7 @@
   <div>
     <section class="paper">
       <h2>所問</h2>
-      <p class="case-profile" id="profile">{{ case.profile_text or "（尚未填寫年次與性別）" }}</p>
+      <p class="case-profile" id="profile">{% if case.nickname %}{{ case.nickname }}　{% endif %}{{ case.profile_text or "（尚未填寫年次與性別）" }}</p>
       <p class="case-profile picked-note" id="pick-info"{% if case.char_source != "picked" %} hidden{% endif %}>{% if case.char_source == "picked" %}自選字「{{ case.char }}」{% if case.pick_rounds > 1 %}，換到第 {{ case.pick_rounds }} 組才選定{% endif %}。候選：{{ case.offered | join("、") }}{% endif %}</p>
       {% if case.follow_chain %}<div class="follow-ctx" id="follow-ctx">
         <strong>這是追問</strong>，前面已問過（由舊到新）：

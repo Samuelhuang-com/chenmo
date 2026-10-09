@@ -760,3 +760,26 @@ def test_followup_carries_context(monkeypatch):
     # 一般問字不受影響
     t4, c4 = ask_one("別的事", "別")
     assert master.get(f"/api/master/cases/{c4}").json()["case"]["follow_chain"] == []
+
+
+def test_nickname_saved_and_shown():
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+    token = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{token}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "profile", "birth_year": 80, "gender": "女", "nickname": "  小明   Amy "})
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    r = stu.post(f"/api/cases/{token}/submit", json={"question": "問", "char": "考", "nickname": "  小明   Amy ", **PROFILE})
+    assert r.status_code == 200
+    cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+    case = master.get(f"/api/master/cases/{cid}").json()["case"]
+    assert case["nickname"] == "小明 Amy"
+    assert "小明 Amy" in master.get(f"/master/case/{cid}").text
+    assert stu.get(f"/api/cases/{token}").json()["case"]["nickname"] == "小明 Amy"
+    # 太長會被擋
+    t2 = stu.post("/api/cases").json()["token"]
+    with stu.websocket_connect(f"/ws/user/{t2}") as ws:
+        stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+        ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+    assert stu.post(f"/api/cases/{t2}/submit", json={"question": "問", "char": "考", "nickname": "名" * 31, **PROFILE}).status_code == 422

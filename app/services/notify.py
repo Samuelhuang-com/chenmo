@@ -24,6 +24,8 @@ def build_message(case: Case, link: str) -> EmailMessage:
     char = case.char or "（未填）"
     source = "自選字" if case.char_source == "picked" else "手寫"
     who = case.profile_text or "未填年次與性別"
+    if case.nickname:
+        who = f"{case.nickname}　{who}"
     msg = EmailMessage()
     msg["Subject"] = f"【{s.app_name}】新問字「{char}」— {re.sub(r'（.*?）', '', who)}"
     msg["From"] = f"{s.app_name} <{s.smtp_user}>"

@@ -31,7 +31,7 @@ async def ask(request: Request, redo: str = "", follow: str = "", n: int = 0):
         old = await get_repo().get_by_token(redo)
         if old and old.rewrite_requested_at and old.status.value == "submitted":
             redo_case = {"token": old.token, "question": old.question, "birth_year": old.birth_year,
-                         "gender": old.gender, "reason": old.rewrite_reason}
+                         "gender": old.gender, "nickname": old.nickname, "reason": old.rewrite_reason}
     follow_case = None
     if follow and not redo_case:
         from app.services.followups import suggest
@@ -39,7 +39,7 @@ async def ask(request: Request, redo: str = "", follow: str = "", n: int = 0):
         if old and old.status.value == "answered":
             items = suggest(old.question)
             follow_case = {"token": old.token, "prev": old.question, "birth_year": old.birth_year,
-                           "gender": old.gender, "question": items[n] if 0 <= n < len(items) else ""}
+                           "gender": old.gender, "nickname": old.nickname, "question": items[n] if 0 <= n < len(items) else ""}
     return templates.TemplateResponse(request, "ask.html",
                                       {"follow": follow_case, "max_chars": get_settings().question_max_chars,
                                        "roc_now": roc_year_now(),

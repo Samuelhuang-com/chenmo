@@ -46,6 +46,8 @@ function birthYear() {
   const v = parseInt(byInput.value, 10);
   return Number.isInteger(v) && v >= 1 && v <= ROC_NOW ? v : null;
 }
+const nickInput = $("nickname");
+function nickname() { return nickInput.value.replace(/\s+/g, " ").trim().slice(0, 30); }
 function gender() { return document.querySelector("input[name=gender]:checked")?.value || ""; }
 let pTimer = 0;
 function onProfile() {
@@ -54,10 +56,11 @@ function onProfile() {
     : byInput.value ? `請填民國 1 到 ${ROC_NOW} 年` : "";
   clearTimeout(pTimer);
   pTimer = setTimeout(() => {
-    if (by || gender()) send({ type: "profile", birth_year: by, gender: gender() });
+    if (by || gender() || nickname()) send({ type: "profile", birth_year: by, gender: gender(), nickname: nickname() });
   }, 500);
 }
 byInput.addEventListener("input", onProfile);
+nickInput.addEventListener("input", onProfile);
 document.querySelectorAll("input[name=gender]").forEach(r => r.addEventListener("change", onProfile));
 
 // ---- 手寫板 ----
@@ -168,7 +171,8 @@ $("submit").onclick = async () => {
   showErr("");
   const question = q.value.trim();
   const ch = $("char").value.trim();
-  const by = birthYear(), g = gender();
+  const by = birthYear(), g = gender(), nn = nickname();
+  if (!nn) { nickInput.focus(); return showErr("請填寫姓氏、暱稱或英文名，讓老師知道怎麼稱呼你。"); }
   if (!by) { byInput.focus(); return showErr(`請填寫年次（民國 1 到 ${ROC_NOW} 年）。`); }
   if (!g) return showErr("請選擇性別。");
   if (!question) return showErr("請先簡述您想問的事。");
@@ -183,8 +187,8 @@ $("submit").onclick = async () => {
     const r = await fetch(`/api/cases/${token}/submit`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pick
-        ? { question, char: pick.char, birth_year: by, gender: g, picked: true, offered: pick.offered, rounds: pick.rounds }
-        : { question, char: ch, birth_year: by, gender: g }),
+        ? { question, char: pick.char, birth_year: by, gender: g, nickname: nn, picked: true, offered: pick.offered, rounds: pick.rounds }
+        : { question, char: ch, birth_year: by, gender: g, nickname: nn }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
@@ -206,6 +210,7 @@ if (prefillNote) {
   const d = prefillNote.dataset;
   q.value = d.question || "";
   q.dispatchEvent(new Event("input"));
+  if (d.nickname) { nickInput.value = d.nickname; }
   if (d.birth) { byInput.value = d.birth; byInput.dispatchEvent(new Event("input")); }
   if (d.gender) {
     const r = document.querySelector(`input[name=gender][value="${d.gender}"]`);

@@ -3,6 +3,12 @@ import { visibleStrokes } from "./ink.js";
 import { Socket } from "./ws-client.js";
 
 const $ = id => document.getElementById(id);
+let nickNow = "";
+function profileLine(c) {
+  nickNow = c.nickname || "";
+  const p = c.profile_text || "（尚未填寫年次與性別）";
+  return nickNow ? `${nickNow}　${p}` : p;
+}
 const caseId = $("bench").dataset.caseId;
 const STATUS = { drafting: "書寫中", submitted: "待解", answered: "已解" };
 let events = [];
@@ -124,7 +130,7 @@ async function load() {
   const d = await r.json();
   events = d.events;
   $("question").textContent = d.case.question || "（尚未填寫）";
-  $("profile").textContent = d.case.profile_text || "（尚未填寫年次與性別）";
+  $("profile").textContent = profileLine(d.case);
   showPick(d.case);
   setStatus(d.case.status, d.case);
   player.load(events);
@@ -153,7 +159,7 @@ new Socket("/ws/master", msg => {
   if (msg.type === "case_update" && msg.case.id === caseId) {
     if (msg.case.rewrite_requested_at) $("rewrite-state").textContent = "已請問事者重寫，等待新的字。";
     if (!$("jiezi-char").value && msg.case.char) $("jiezi-char").value = msg.case.char;
-    if (msg.case.profile_text) $("profile").textContent = msg.case.profile_text;
+    if (msg.case.profile_text) $("profile").textContent = profileLine(msg.case);
     showPick(msg.case);
     return setStatus(msg.case.status, msg.case);
   }
@@ -170,7 +176,7 @@ new Socket("/ws/master", msg => {
     case "stroke_end": liveStrokes.delete(msg.seq); break;
     case "undo": case "clear": events.push({ type: msg.type }); break;
     case "question": $("question").textContent = msg.text || "（尚未填寫）"; return;
-    case "profile": $("profile").textContent = msg.text || "（尚未填寫年次與性別）"; return;
+    case "profile": $("profile").textContent = profileLine({ nickname: msg.nickname ?? nickNow, profile_text: msg.text }); return;
     case "pick": showPick({ char_source: "picked", char: msg.char, offered: msg.offered, pick_rounds: msg.rounds }); return;
     case "unpick": showPick(null); return;
   }

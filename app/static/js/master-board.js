@@ -17,7 +17,7 @@ function ticket(c) {
   return `<a class="ticket${isLive ? " live" : ""}" href="/master/case/${c.id}">
     <div class="t-char grid-paper">${esc(c.char) || ""}</div>
     <div><p class="t-q">${esc(c.question) || "（尚未填寫問題）"}${c.char_source === "picked" ? '<span class="tag-pick">自選</span>' : ""}</p>
-    <div class="t-meta">${c.profile_text ? esc(c.profile_text.replace(/（.*?）/, "")) + "，" : ""}${c.stroke_count} 筆，${fmt(time)}</div></div></a>`;
+    <div class="t-meta">${c.nickname ? "<b>" + esc(c.nickname) + "</b>　" : ""}${c.profile_text ? esc(c.profile_text.replace(/（.*?）/, "")) + "，" : ""}${c.stroke_count} 筆，${fmt(time)}</div></div></a>`;
 }
 
 function render() {
@@ -60,7 +60,7 @@ new Socket("/ws/master", msg => {
   if (msg.type === "undo") c.stroke_count = Math.max(c.stroke_count - 1, 0);
   if (msg.type === "clear") c.stroke_count = 0;
   if (msg.type === "question") c.question = msg.text;
-  if (msg.type === "profile") c.profile_text = msg.text;
+  if (msg.type === "profile") { c.profile_text = msg.text; if (msg.nickname !== undefined) c.nickname = msg.nickname; }
   if (msg.type === "pick") { c.char = msg.char; c.char_source = "picked"; }
   if (msg.type === "unpick") { c.char = ""; c.char_source = ""; }
   c.updated_at = Date.now();

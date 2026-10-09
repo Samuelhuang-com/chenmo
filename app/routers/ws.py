@@ -83,11 +83,14 @@ async def user_ws(ws: WebSocket, token: str):
                         fields["birth_year"] = by
                 except (TypeError, ValueError):
                     pass
+                nn = " ".join(str(msg.get("nickname", "")).split())[:30]
+                if "nickname" in msg:
+                    fields["nickname"] = nn
                 if msg.get("gender") in GENDERS:
                     fields["gender"] = msg["gender"]
                 if fields:
                     updated = await repo.update(case.id, **fields)
-                    out = {"type": "profile", "text": updated.profile_text}
+                    out = {"type": "profile", "text": updated.profile_text, "nickname": updated.nickname}
 
             elif t == "pick":
                 from app.services.pick import valid_offer
