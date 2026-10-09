@@ -193,7 +193,7 @@ async def system_page(request: Request, master: dict = Depends(require_master_pa
     if not ver:   # 本機執行：直接讀目前的 git commit
         try:
             import subprocess
-            run = lambda *a: subprocess.run(["git", *a], capture_output=True, text=True, timeout=3,
+            run = lambda *a: subprocess.run(["git", *a], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3,
                                             cwd=os.path.dirname(os.path.dirname(os.path.dirname(__file__)))).stdout.strip()
             ver, commit = run("log", "-1", "--pretty=%s"), run("rev-parse", "--short", "HEAD")
         except Exception:
