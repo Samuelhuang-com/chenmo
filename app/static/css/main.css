@@ -107,6 +107,7 @@ main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 16px 
   display: grid; place-items: center;
   font-family: var(--kai); font-size: min(180px, 48vw); color: var(--mo); line-height: 1;
 }
+.hero-char img { width: 72%; height: auto; display: block; }
 .flow { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
 .flow li { display: grid; grid-template-columns: 2.2em 1fr; align-items: baseline; }
 .flow b { font-family: var(--kai); font-weight: 400; color: var(--zhu); font-size: var(--step-1); }
