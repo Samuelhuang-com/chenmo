@@ -12,7 +12,7 @@ NOTIFY_EMAILS="${NOTIFY_EMAILS:-$MASTER_EMAILS}"
 BRAND_LOGO="${BRAND_LOGO:-C}"
 
 # 隨喜贊助：LINE 官方帳號加好友連結（老師再傳 LINE Pay 收款連結給想贊助的人）（留空則只顯示 QR 圖，兩者都沒有就不顯示贊助區塊）
-SPONSOR_LINE_URL="${SPONSOR_LINE_URL:-https://lin.ee/Ti0W37K}"
+SPONSOR_LINE_URL="${SPONSOR_LINE_URL:-}"   # 先不顯示；要開時填 https://lin.ee/Ti0W37K
 
 if [[ "$PROJECT_ID" == 請填* || "$MASTER_EMAILS" == 請填* ]]; then
   echo "❌ 請先編輯 deploy/config.sh，填入 PROJECT_ID 與 MASTER_EMAILS" >&2

@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     student_login_required: bool = False
 
     # 隨喜贊助（請老師喝咖啡）：LINE Pay 收款連結；或放一張收款 QR 圖到 app/static/img/sponsor-qr.png
-    sponsor_line_url: str | None = "https://lin.ee/Ti0W37K"
+    sponsor_line_url: str | None = None   # LINE 加好友連結先不顯示；要開時填 https://lin.ee/Ti0W37K
     # 銀行轉帳（會公開顯示在網站上）。三個欄位任一為空就不顯示
     sponsor_bank_name: str = "元大商業銀行"
     sponsor_bank_code: str = "806"

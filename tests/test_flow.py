@@ -663,7 +663,7 @@ def test_sponsor_bank_box(monkeypatch):
     monkeypatch.setattr(s, "sponsor_bank_code", "123")
     monkeypatch.setattr(s, "sponsor_bank_account", "9876543210")
     page = stu.get(f"/c/{token}").text
-    assert "銀行轉帳" in page and "測試銀行（123）" in page and "9876543210" in page and 'id="bank-copy"' in page
+    assert "可以銀行轉帳" in page and "測試銀行（123）" in page and "9876543210" in page and 'id="bank-copy"' in page
 
 
 def test_email_student_on_answer(monkeypatch):
