@@ -215,8 +215,13 @@ function splitCombined(text) {
 }
 const esc = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 function textToHtml(text) {
-  return text.trim().split(/\n\s*\n/).filter(x => x.trim())
-    .map(x => `<p>${esc(x.trim()).replace(/\n/g, "<br>")}</p>`).join("");
+  return text.trim().split(/\n\s*\n/).filter(x => x.trim()).map(x => {
+    x = x.trim();
+    const mh = x.startsWith("梅花易數｜");   // 梅花易數段落：標題 + 內文
+    if (mh) x = x.slice(5);
+    const p = `<p>${esc(x).replace(/\n/g, "<br>")}</p>`;
+    return mh ? `<h4>梅花易數</h4>${p}` : p;
+  }).join("");
 }
 const readingEl = $("reading");
 function readingPlain() { return readingEl.innerText.replace(/\u00a0/g, " ").trim(); }

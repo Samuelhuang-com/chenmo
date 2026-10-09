@@ -375,6 +375,8 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 /* 解讀富文字編輯器 */
 .answer.rich { white-space: normal; }
 .answer.rich p, .answer.rich div { margin: 0 0 .6em; }
+.answer.rich h4, .rte-body h4, .preview .answer h4 { display: inline-block; margin: 1.3em 0 .5em; padding: 0 .7em;
+  font-family: var(--kai); font-weight: 400; font-size: .9em; letter-spacing: .3em; color: var(--zhu); border: 1px solid var(--zhu); }
 .answer.rich ul, .answer.rich ol { margin: .3em 0 .6em 1.4em; padding: 0; }
 .rte { border: 1px solid #b9ab8f; border-radius: 10px; background: #fffdf8; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 .rte:focus-within { border-color: var(--zhu); box-shadow: 0 0 0 3px rgba(179,38,30,.12); }

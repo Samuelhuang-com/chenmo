@@ -346,7 +346,8 @@ async def api_jiezi(case_id: str, body: JieziIn, master: dict = Depends(require_
     case = await repo.get(case_id)
     if not case:
         raise HTTPException(404)
-    if case.draft and case.draft_char == body.char and not body.refresh:
+    stale = bool(case.derived_yao) and "【參考卦】" not in (case.draft or "")   # 起卦後要重新帶出才會有參考卦
+    if case.draft and case.draft_char == body.char and not body.refresh and not stale:
         return {"char": body.char, "text": case.draft, "cached": True}
     result = await compose(case, await repo.list_events(case_id), body.char)
     # AI 設定了卻失敗時不要快取，下次按「帶出字資料」才會重試

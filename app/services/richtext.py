@@ -140,4 +140,11 @@ def html_to_text(raw: str) -> str:
 def text_to_html(text: str) -> str:
     """純文字 → 段落 HTML（舊的解讀、AI 草稿用）。"""
     paras = [p for p in re.split(r"\n\s*\n", (text or "").strip()) if p.strip()]
-    return "".join(f"<p>{html.escape(p.strip(), quote=False).replace(chr(10), '<br>')}</p>" for p in paras)
+    out = []
+    for p in paras:
+        p = p.strip()
+        head = p.startswith("梅花易數｜")      # 以字起卦的段落：標題 + 內文
+        if head:
+            p = p[5:]
+        out.append(("<h4>梅花易數</h4>" if head else "") + f"<p>{html.escape(p, quote=False).replace(chr(10), '<br>')}</p>")
+    return "".join(out)

@@ -380,7 +380,9 @@ async def derive_from_char(case_id: str, body: DeriveIn | None = None, master: d
                "gua": f"{chart.ben.name} → {chart.bian.name}" if chart.bian else chart.ben.name}
     await repo.update(case.id, derived_yao=derived)
     url = f"/master/yao/paipan?v={''.join(map(str, values))}&t={when:%Y-%m-%dT%H:%M}&zi=1"
-    return {**derived, "url": url}
+    from app.services.liuyao.derived import public_block, reference_text
+    case.derived_yao = derived
+    return {**derived, "url": url, "text": reference_text(case), "block": public_block(case)}
 
 
 # ---------------- 問事者：不再占提醒 ----------------

@@ -103,6 +103,20 @@ def _sec_ai(ai: dict | None, key: str) -> str:
     return NO_AI
 
 
+def _gua_block(case: Case) -> str:
+    from app.services.liuyao.derived import reference_text
+    t = reference_text(case)
+    if not t:
+        return ""
+    return ("\n\n參考卦（老師按「以此字起卦」排出的盤，只是輔助，不是問事者自己擲的卦）：\n" + t
+            + "\n請把卦象當輔助依據，和拆字互相印證；兩者方向不同時要如實說明。"
+              "只依上面的盤面事實判斷，不要自己重排盤。reading 仍要口語，不能出現卦名、爻、六親、世應等術語；"
+              "另外輸出 gua_note：給老師看的卦象簡析（可用術語，150 字內）；"
+              "以及 gua_plain：給問事者看的白話卦象說明（100 到 180 字，標題「梅花易數」由系統加，你不用寫；"
+              "可以提一次卦名，但不用爻、六親、世應、用神等術語，像長輩聊天一樣說這個卦看起來是什麼意思，"
+              "用「看起來」「比較像」留餘地，不下絕對結論；系統已另外說明本卦是現況、變卦是走向以及各卦的一句話意思，你不要重複，請說這一卦放在這位問事者的問題與這個字上代表什麼，並明確指出它和字義解讀是呼應或有不同，不要重複 reading 的內容）。")
+
+
 def build_context(case: Case, i: CharInfo, f: StrokeFeatures, history: list[dict] | None = None,
                   others: list[dict] | None = None) -> str:
     sw = i.shuowen
@@ -137,7 +151,7 @@ def build_context(case: Case, i: CharInfo, f: StrokeFeatures, history: list[dict
 《說文解字》資料：{sw_text}
 辭典釋義：{moe_text}
 選字方式：{pick_text(case) or '問事者自己手寫'}
-筆跡觀察：{''.join(f.observations) if f.count else '無'}"""
+筆跡觀察：{''.join(f.observations) if f.count else '無'}{_gua_block(case)}"""
 
 
 async def _history(case: Case) -> list[dict]:
@@ -190,8 +204,19 @@ async def compose(case: Case, events: list[dict], char: str, use_ai: bool = True
         "五行": _sec_wuxing(info, ai),
         "古字說法": _sec_ancient(info, ai),
         "字義": _sec_meaning(info, ai),
-        "解讀": _sec_ai(ai, "reading"),
     }
+    from app.services.liuyao.derived import HEAD, reference_text
+    ref = reference_text(case)
+    if ref:   # 老師已「以此字起卦」：盤面事實放進解字資料（只有老師看得到），AI 有簡析就附在後面
+        note = ai.get("gua_note") if ai else ""
+        sections[HEAD] = ref + (f"\n簡析：{note}{AI_MARK}" if note else "")
+    reading = _sec_ai(ai, "reading")
+    if ref:   # 給問事者看的「梅花易數」段落接在解讀後面（沒有 AI 時只有起卦的交代，老師自己補白話說明）
+        from app.services.liuyao.derived import public_block
+        has_ai = bool(ai and ai.get("reading"))
+        core = reading.removesuffix(AI_MARK) if has_ai else reading
+        reading = core + "\n\n" + public_block(case, (ai.get("gua_plain") or "") if ai else "") + (AI_MARK if has_ai else "")
+    sections["解讀"] = reading
     text = "\n\n".join(f"【{k}】\n{v}" for k, v in sections.items())
     return {"char": char, "sections": sections, "text": text, "ai_used": bool(ai), "ai_error": ai_error,
             "features": feats.__dict__}
