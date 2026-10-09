@@ -45,7 +45,7 @@
       {% if case.follow_chain %}<div class="follow-ctx" id="follow-ctx">
         <strong>這是追問</strong>，前面已問過（由舊到新）：
         <ol>{% for c in case.follow_chain %}<li>「{{ c.question }}」<span class="fc-char">{{ c.char }}</span></li>{% endfor %}</ol>
-        <span class="hint">AI 草稿已把前面的問題與字一併納入，請綜合判讀。</span>
+        <span class="hint">AI 草稿已把前面的問題、字與你當時送出的解讀一併納入，請綜合判讀。</span>
       </div>{% endif %}
       <p class="case-q" id="question">{{ case.question or "（尚未填寫）" }}</p>
       <p class="case-meta">

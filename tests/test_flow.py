@@ -783,3 +783,65 @@ def test_nickname_saved_and_shown():
         stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
         ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
     assert stu.post(f"/api/cases/{t2}/submit", json={"question": "問", "char": "考", "nickname": "名" * 31, **PROFILE}).status_code == 422
+
+
+def test_ai_context_has_name_and_previous_readings():
+    import asyncio
+    from app.models import Case
+    from app.services import jiezi
+    from app.services.stroke_features import analyze
+    master = TestClient(app); login(master)
+    stu = TestClient(app)
+
+    def ask_one(question, char, follow_of=None, nickname="小明"):
+        token = (stu.post("/api/cases", json={"follow_of": follow_of}) if follow_of else stu.post("/api/cases")).json()["token"]
+        with stu.websocket_connect(f"/ws/user/{token}") as ws:
+            stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+            ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+        stu.post(f"/api/cases/{token}/submit", json={"question": question, "char": char, "nickname": nickname, **PROFILE})
+        cid = next(c["id"] for c in master.get("/api/master/cases").json()["cases"] if c["token"] == token)
+        return token, cid
+
+    t1, c1 = ask_one("我的財運如何", "財")
+    master.post(f"/api/master/cases/{c1}/answer", json={"body": "【解讀】\n今年財運平穩，下半年有轉機。", "reading_html": "<p>今年財運平穩，下半年有轉機。</p>"})
+    t2, c2 = ask_one("什麼時候財運會比較好？", "時", follow_of=t1)
+    case2 = Case(**master.get(f"/api/master/cases/{c2}").json()["case"])
+    history = asyncio.run(jiezi._history(case2))
+    assert history[0]["char"] == "財" and "下半年有轉機" in history[0]["reading"]
+    ctx = jiezi.build_context(case2, jiezi.lookup("時"), analyze([], None), history)
+    assert "稱呼：「小明」" in ctx and "老師當時的解讀：今年財運平穩" in ctx and "這是追問" in ctx
+    # 一般問字：有稱呼、沒有追問段落
+    plain = Case(**master.get(f"/api/master/cases/{c1}").json()["case"])
+    ctx0 = jiezi.build_context(plain, jiezi.lookup("財"), analyze([], None))
+    assert "稱呼：「小明」" in ctx0 and "這是追問" not in ctx0
+
+
+def test_ai_context_includes_other_cases_of_same_login(monkeypatch):
+    import asyncio
+    from app.models import Case
+    from app.services import jiezi
+    from app.services.stroke_features import analyze
+    _fake_google(monkeypatch, "me@gmail.com", "小華")
+    master = TestClient(app); login(master)
+
+    def ask_one(c, question, char):
+        token = c.post("/api/cases").json()["token"]
+        with c.websocket_connect(f"/ws/user/{token}") as ws:
+            stroke(ws, 1, [[0.2, 0.2, 0], [0.8, 0.2, 40]])
+            ws.send_json({"type": "sync", "id": 1}); ws.receive_json()
+        c.post(f"/api/cases/{token}/submit", json={"question": question, "char": char, "nickname": "小華", **PROFILE})
+        return next(x["id"] for x in master.get("/api/master/cases").json()["cases"] if x["token"] == token)
+
+    me = TestClient(app); me.get("/me/login?next=/ask")
+    old = ask_one(me, "舊事：感情", "愛")
+    master.post(f"/api/master/cases/{old}/answer", json={"body": "【解讀】\n感情要慢慢來。", "reading_html": "<p>感情要慢慢來。</p>"})
+    new = ask_one(me, "新事：工作", "工")
+    other = TestClient(app)                      # 沒登入的人，不會被串起來
+    anon = ask_one(other, "匿名", "匿")
+    master.post(f"/api/master/cases/{anon}/answer", json={"body": "【解讀】\n匿名的解讀", "reading_html": "<p>匿名的解讀</p>"})
+    case = Case(**master.get(f"/api/master/cases/{new}").json()["case"])
+    others = asyncio.run(jiezi._other_cases(case, []))
+    assert [o["question"] for o in others] == ["舊事：感情"]            # 只含自己、已解讀的舊案件
+    ctx = jiezi.build_context(case, jiezi.lookup("工"), analyze([], None), [], others)
+    assert "以前還問過" in ctx and "感情要慢慢來" in ctx and "匿名的解讀" not in ctx
+    assert asyncio.run(jiezi._other_cases(Case(**master.get(f"/api/master/cases/{anon}").json()["case"]), [])) == []
