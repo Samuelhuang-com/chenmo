@@ -212,7 +212,7 @@ async def workbench(request: Request, case_id: str, master: dict = Depends(requi
     for e in tosses:
         e["pause_s"] = round(max(e.get("ts", prev) - prev, 0) / 1000, 1)
         prev = e.get("ts", prev)
-    from app.services.richtext import html_to_text
+    from app.services.richtext import html_to_text, text_to_html
     from app.services.followups import suggest
     from app.services.liuyao import texts as zy
     from app.services.liuyao.yongshen import choose
@@ -223,6 +223,7 @@ async def workbench(request: Request, case_id: str, master: dict = Depends(requi
         "texts": zy.for_chart(chart) if chart else None, "texts_note": zy.source_note(),
         "followups": case.followups or suggest(case.question),
         "ai_enabled": bool(get_settings().anthropic_api_key),
+        "reading_init": (case.reading_draft or case.answer_html or text_to_html(case.answer or "")),
         "reading_text": html_to_text(case.reading_draft or case.answer_html) if (case.reading_draft or case.answer_html) else case.answer,
         "site_url": (get_settings().site_url or "").rstrip("/")})
 

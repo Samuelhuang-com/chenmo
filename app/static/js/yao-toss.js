@@ -89,6 +89,7 @@ function init() {
     $("manual").hidden = !manual;
     coinsBtn.classList.toggle("is-manual", manual);
     $("manual-toggle").textContent = manual ? "改回線上擲錢" : "我想用自己的銅錢";
+    updateRemind();
     $("calm").textContent = manual ? "用自己的三枚銅錢擲，每擲一次，在下面選出現了幾個「背」。" : "靜心片刻，心中默念所問。準備好了，按下銅錢。";
   });
 
@@ -195,7 +196,7 @@ function init() {
   let soundOn = false, ctx = null;
   try { soundOn = localStorage.getItem("yao-sound") === "1"; } catch {}
   const soundBtn = $("sound-toggle");
-  const paintSound = () => { soundBtn.textContent = `音效：${soundOn ? "開" : "關"}`; soundBtn.setAttribute("aria-pressed", String(soundOn)); };
+  const paintSound = () => { const l = `音效：${soundOn ? "開" : "關"}`; soundBtn.setAttribute("aria-label", l); soundBtn.title = l; soundBtn.setAttribute("aria-pressed", String(soundOn)); };
   soundBtn.addEventListener("click", () => {
     soundOn = !soundOn; paintSound();
     try { localStorage.setItem("yao-sound", soundOn ? "1" : "0"); } catch {}
@@ -220,10 +221,24 @@ function init() {
     } catch {}
   }
 
-  // ---- 搖手機擲錢（DeviceMotion；iPhone 需要先允許「動作與方向」） ----
+  // ---- 搖手機擲錢（DeviceMotion）：手機預設開啟；iPhone 要使用者先動作一次才能授權 ----
   const shakeBtn = $("shake-toggle");
-  if ("DeviceMotionEvent" in window && matchMedia("(pointer: coarse)").matches) shakeBtn.hidden = false;
-  let shakeOn = false, shakeSince = 0, lastStrong = 0, shakeTimer = null;
+  const canShake = "DeviceMotionEvent" in window && matchMedia("(pointer: coarse)").matches;
+  const needPerm = canShake && typeof DeviceMotionEvent.requestPermission === "function";
+  let shakeOn = false, shakeOff = false, shakeSince = 0, lastStrong = 0, shakeTimer = null;
+  function updateRemind() {
+    const el = $("toss-remind");
+    el.hidden = manual;
+    el.textContent = !canShake ? "按住銅錢搖一搖，放開就擲出。"
+      : shakeOn ? "可以直接搖手機，或按下銅錢擲出。"
+      : "可以按下銅錢擲出；點上方的手機圖示，就能改用搖手機。";
+  }
+  function paintShake() {
+    shakeBtn.setAttribute("aria-pressed", String(shakeOn));
+    const l = shakeOn ? "搖手機擲錢：開" : "搖手機擲錢：關";
+    shakeBtn.setAttribute("aria-label", l); shakeBtn.title = l;
+    updateRemind();
+  }
   function onMotion(e) {
     if (busy || manual || values.length >= 6 || !token) return;
     const a = e.acceleration;
@@ -243,23 +258,29 @@ function init() {
       }, 350);
     }
   }
-  shakeBtn.addEventListener("click", async () => {
-    if (!shakeOn) {
+  async function setShake(on) {
+    if (on && !shakeOn) {
       try {
-        if (typeof DeviceMotionEvent.requestPermission === "function") {
+        if (needPerm) {
           const res = await DeviceMotionEvent.requestPermission();
           if (res !== "granted") { err("手機沒有允許讀取動作感應，請直接按銅錢擲錢。"); return; }
         }
       } catch { err("這支手機不支援搖動擲錢，請直接按銅錢。"); return; }
       window.addEventListener("devicemotion", onMotion);
       shakeOn = true;
-      shakeBtn.textContent = "搖手機擲錢：開（搖一搖，停下就擲出）";
-    } else {
+    } else if (!on && shakeOn) {
       window.removeEventListener("devicemotion", onMotion);
       shakeOn = false;
-      shakeBtn.textContent = "搖手機擲錢";
     }
-  });
+    paintShake();
+  }
+  if (canShake) {
+    shakeBtn.hidden = false;
+    shakeBtn.addEventListener("click", () => { shakeOff = shakeOn; setShake(!shakeOn); });
+    if (needPerm) coinsBtn.addEventListener("click", () => { if (!shakeOn && !shakeOff) setShake(true); });  // iPhone：第一次按銅錢時一併詢問授權
+    else setShake(true);                                                                                   // Android：直接開啟
+  }
+  paintShake();
 
   // ---- 重新整理時接續未完成的卦 ----
   (async () => {

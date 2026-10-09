@@ -75,13 +75,42 @@
 
   <section class="paper">
     <h2><label for="reading">解卦（問事者會看到的內容）</label></h2>
-    <p class="hint">用白話寫給問事者看。卦盤、用神等專業資料只留在這裡，不會送出。內容會自動暫存。</p>
+    <p class="hint">用平常說話的方式寫就好。在方框裡直接編輯，下方的預覽就是問事者看到的樣子；卦盤、用神等專業資料只留在這裡，不會送出。內容會自動暫存。</p>
     {% if chart %}<div class="ai-row">
       <button class="btn" type="button" id="ai-run" {% if not ai_enabled %}disabled title="尚未設定 ANTHROPIC_API_KEY"{% endif %}>AI 解卦草稿</button>
       <span class="hint" id="ai-state">{% if not ai_enabled %}尚未設定 AI 金鑰。{% else %}依卦盤、用神、經文、你的規則庫與此人以前問過的事產生，會放進下方欄位，請審閱修改。{% endif %}</span>
     </div>
     <details class="ai-basis" id="ai-basis" hidden><summary>AI 的判斷依據（給你核對，不會送出）</summary><ul id="ai-basis-list"></ul></details>{% endif %}
-    <textarea id="reading" rows="12" placeholder="例如：{{ case.nickname or '你' }}好，這一卦……">{{ reading_text }}</textarea>
+    <div class="rte" id="rte">
+      <div class="rte-bar" id="rte-bar" role="toolbar" aria-label="解卦格式">
+        <button type="button" data-cmd="undo" title="復原" aria-label="復原"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+        <button type="button" data-cmd="redo" title="重做" aria-label="重做"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+        <span class="sep"></span>
+        <select id="rte-size" aria-label="字級" title="字級"><option value="">字級</option><option value="14">小</option><option value="16">標準</option><option value="20">大</option><option value="24">特大</option></select>
+        <span class="sep"></span>
+        <button type="button" data-cmd="bold" title="粗體" aria-label="粗體"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="斜體" aria-label="斜體"><i>I</i></button>
+        <button type="button" data-cmd="underline" title="底線" aria-label="底線"><u>U</u></button>
+        <button type="button" data-cmd="strikeThrough" title="刪除線" aria-label="刪除線"><s>S</s></button>
+        <label class="color-btn" title="文字顏色"><span class="c-a">A</span><input type="color" id="rte-color" value="#b3261e" aria-label="文字顏色"></label>
+        <label class="color-btn" title="螢光筆"><span class="c-h"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="m4 20 4-1 11-11-3-3L5 16l-1 4Z"/><path d="M3 22h18v-2H3z" opacity=".5"/></svg></span><input type="color" id="rte-hilite" value="#fff3a3" aria-label="螢光筆顏色"></label>
+        <span class="sep"></span>
+        <button type="button" data-cmd="justifyLeft" title="靠左" aria-label="靠左"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button>
+        <button type="button" data-cmd="justifyCenter" title="置中" aria-label="置中"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button>
+        <button type="button" data-cmd="justifyRight" title="靠右" aria-label="靠右"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></svg></button>
+        <span class="sep"></span>
+        <button type="button" data-cmd="insertUnorderedList" title="項目符號" aria-label="項目符號"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></button>
+        <button type="button" data-cmd="insertOrderedList" title="編號清單" aria-label="編號清單"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 5h1v4M3.5 14.5c.4-.6 2.5-.8 2.5.5 0 1-2.5 1.5-2.5 2.5H6"/></svg></button>
+        <button type="button" data-cmd="removeFormat" title="清除格式" aria-label="清除格式"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/><path d="m3 3 18 18"/></svg></button>
+      </div>
+      <div id="reading" class="rte-body answer rich" contenteditable="true" role="textbox" aria-multiline="true"
+           aria-label="解卦內容" data-placeholder="例如：{{ case.nickname or '你' }}好，這一卦……">{{ reading_init | safe }}</div>
+    </div>
+    <div class="reading-tools"><span class="hint" id="reading-count" style="margin:0"></span></div>
+    <div class="preview">
+      <h3>問事者看到的畫面</h3>
+      <div class="answer rich" id="preview"></div>
+    </div>
     <p class="hint" id="save-state" aria-live="polite"></p>
 
     <h3 class="sub-h">解卦後給問事者的 3 個追問</h3>
@@ -145,14 +174,17 @@
   const bench = $("bench"), caseId = bench.dataset.caseId, status = bench.dataset.status;
   const err = (m) => { $("error").textContent = m || ""; };
   const esc = (s) => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const toHtml = (t) => t.trim().split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
-  const text = () => $("reading").value;
+  const textToHtml = (t) => t.trim().split(/\n{2,}/).filter(x => x.trim()).map(p => `<p>${esc(p.trim()).replace(/\n/g, "<br>")}</p>`).join("");
+  const readingEl = $("reading");
+  const text = () => readingEl.innerText.replace(/\u00a0/g, " ").trim();
+  const toHtml = () => readingEl.innerHTML;
   const api = (url, method = "POST", body) => fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   const detail = async (r) => { const d = await r.json().catch(() => ({})); return Array.isArray(d.detail) ? d.detail.map(x => x.msg).join("；") : (d.detail || "操作失敗"); };
 
   // 自動暫存
   let timer = null;
-  $("reading").addEventListener("input", () => {
+  readingEl.addEventListener("input", () => {
+    renderReading();
     $("save-state").textContent = "編輯中…";
     clearTimeout(timer);
     timer = setTimeout(async () => {
@@ -201,6 +233,64 @@
     catch { share.select(); }
   });
 
+  // ---- 解卦編輯器：預覽與工具列（與問字相同） ----
+  const OK_TAGS = new Set(["P", "DIV", "BR", "B", "STRONG", "I", "EM", "U", "S", "STRIKE", "DEL", "UL", "OL", "LI", "SPAN", "FONT", "H3", "H4"]);
+  function cleanNode(src, dst) {
+    src.childNodes.forEach(n => {
+      if (n.nodeType === 3) dst.appendChild(document.createTextNode(n.textContent));
+      else if (n.nodeType === 1 && OK_TAGS.has(n.tagName)) {
+        const c = document.createElement(n.tagName.toLowerCase());
+        if (n.getAttribute("style")) {
+          const ok = n.getAttribute("style").split(";").filter(d => /^\s*(color|background-color|text-align|font-weight|font-style|text-decoration|font-size)\s*:\s*[^;]*$/i.test(d) && !/url|expression/i.test(d));
+          if (ok.length) c.setAttribute("style", ok.join(";"));
+        }
+        if (n.tagName === "FONT" && /^[1-7]$/.test(n.getAttribute("size") || "")) c.setAttribute("size", n.getAttribute("size"));
+        cleanNode(n, c); dst.appendChild(c);
+      } else if (n.nodeType === 1 && !["SCRIPT", "STYLE", "IFRAME", "OBJECT"].includes(n.tagName)) cleanNode(n, dst);
+    });
+  }
+  function renderReading() {
+    readingEl.dataset.empty = text() ? "" : "1";
+    const box = document.createElement("div");
+    cleanNode(new DOMParser().parseFromString(readingEl.innerHTML, "text/html").body, box);
+    $("preview").innerHTML = box.innerHTML;
+    const n = [...text().replace(/\s/g, "")].length;
+    $("reading-count").textContent = n ? `${n} 字` : "";
+  }
+  document.execCommand("styleWithCSS", false, true);
+  let savedRange = null;
+  document.addEventListener("selectionchange", () => {
+    const sel = getSelection();
+    if (sel.rangeCount && readingEl.contains(sel.anchorNode)) savedRange = sel.getRangeAt(0).cloneRange();
+  });
+  function restoreSel() {
+    readingEl.focus();
+    if (savedRange) { const sel = getSelection(); sel.removeAllRanges(); sel.addRange(savedRange); }
+  }
+  const changed = () => readingEl.dispatchEvent(new Event("input"));
+  function exec(cmd, val = null) { restoreSel(); document.execCommand(cmd, false, val); changed(); }
+  $("rte-bar").addEventListener("mousedown", e => { if (!e.target.closest("select, input")) e.preventDefault(); });
+  $("rte-bar").addEventListener("click", e => { const b = e.target.closest("button[data-cmd]"); if (b) exec(b.dataset.cmd); });
+  $("rte-color").addEventListener("input", e => exec("foreColor", e.target.value));
+  $("rte-hilite").addEventListener("input", e => exec("hiliteColor", e.target.value));
+  $("rte-size").addEventListener("change", e => {
+    const px = e.target.value; e.target.value = "";
+    if (!px) return;
+    restoreSel();
+    document.execCommand("fontSize", false, "7");
+    readingEl.querySelectorAll('font[size="7"]').forEach(f => {
+      const sp = document.createElement("span"); sp.style.fontSize = px + "px";
+      sp.innerHTML = f.innerHTML; f.replaceWith(sp);
+    });
+    readingEl.querySelectorAll("[style*='xxx-large']").forEach(el => { el.style.fontSize = px + "px"; });
+    changed();
+  });
+  readingEl.addEventListener("paste", e => {
+    e.preventDefault();
+    document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain"));
+  });
+  renderReading();
+
   // 用神
   $("ys-save")?.addEventListener("click", async () => {
     const t = $("ys-target").value, line = $("ys-line").value;
@@ -219,7 +309,7 @@
     $("ai-run").disabled = false;
     if (!r.ok) { $("ai-state").textContent = await detail(r); return; }
     const d = await r.json();
-    $("reading").value = d.reading;
+    readingEl.innerHTML = textToHtml(d.reading);
     $("reading").dispatchEvent(new Event("input"));
     const list = $("ai-basis-list"); list.innerHTML = "";
     (d.basis || []).forEach(b => { const li = document.createElement("li"); li.textContent = b; list.appendChild(li); });
