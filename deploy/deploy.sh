@@ -4,6 +4,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source deploy/config.sh
+
+# 只讓 GitHub Actions 部署，避免從 Cloud Shell / 本機部署把舊版蓋掉新版。
+# 真的需要手動部署時：ALLOW_MANUAL_DEPLOY=1 bash deploy/deploy.sh
+if [[ "${GITHUB_ACTIONS:-}" != "true" && "${ALLOW_MANUAL_DEPLOY:-}" != "1" ]]; then
+  echo "❌ 請用 GitHub Actions 部署（git push 到 main，或在 GitHub 的 Actions 頁按 Run workflow）。" >&2
+  echo "   手動部署可能把舊版程式覆蓋掉新版。真的要手動部署，請加上 ALLOW_MANUAL_DEPLOY=1。" >&2
+  exit 1
+fi
 gcloud config set project "$PROJECT_ID" >/dev/null
 
 SECRETS="SECRET_KEY=chenmo-secret-key:latest"
@@ -37,7 +45,7 @@ gcloud run deploy "$SERVICE" \
   --timeout 3600 \
   --session-affinity \
   --cpu 1 --memory 512Mi \
-  --set-env-vars "^;^REPO_BACKEND=firestore;GCP_PROJECT=$PROJECT_ID;SECURE_COOKIES=true;MASTER_EMAILS=$MASTER_EMAILS;SMTP_USER=$SMTP_USER;NOTIFY_EMAILS=$NOTIFY_EMAILS;SITE_URL=$SITE_URL;SPONSOR_LINE_URL=$SPONSOR_LINE_URL" \
+  --set-env-vars "^;^REPO_BACKEND=firestore;GCP_PROJECT=$PROJECT_ID;SECURE_COOKIES=true;MASTER_EMAILS=$MASTER_EMAILS;SMTP_USER=$SMTP_USER;NOTIFY_EMAILS=$NOTIFY_EMAILS;SITE_URL=$SITE_URL;SPONSOR_LINE_URL=$SPONSOR_LINE_URL;BRAND_LOGO=$BRAND_LOGO" \
   --set-secrets "$SECRETS"
 
 URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')

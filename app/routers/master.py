@@ -184,6 +184,31 @@ def _reading_of(body: AnswerIn) -> tuple[str, str]:
     return public_reading(body.body), ""
 
 
+@router.get("/master/system")
+async def system_page(request: Request, master: dict = Depends(require_master_page)):
+    """系統狀態：確認部署版本、AI、寄信、贊助等設定是否生效。"""
+    import os
+    s = get_settings()
+    checks = [
+        ("部署版本（Cloud Run revision）", os.environ.get("K_REVISION") or "本機執行（沒有版本號）"),
+        ("網站網址 SITE_URL", s.site_url or "未設定（信中連結會用目前網址）"),
+        ("AI 金鑰", "已設定" if s.anthropic_api_key else "未設定"),
+        ("寄信（新問字通知、送出解讀寄信）", "已設定" if s.email_enabled else "未設定（需要 SMTP_USER、SMTP_PASSWORD、NOTIFY_EMAILS）"),
+        ("Google 登入", "已啟用" if s.google_login_enabled else "未啟用"),
+        ("問事者必須登入才能問字", "是" if s.student_login_effective else "否（可不登入）"),
+        ("銀行轉帳資訊", "已設定" if (s.sponsor_bank_code and s.sponsor_bank_account) else "未設定"),
+        ("LINE 加好友按鈕", s.sponsor_line_url or "不顯示"),
+    ]
+    return templates.TemplateResponse(request, "master/system.html", {"master": master, "checks": checks})
+
+
+@router.post("/api/master/ai_check")
+async def api_ai_check(master: dict = Depends(require_master_api)):
+    from app.services.ai_draft import ping
+    ok, msg = await ping()
+    return {"ok": ok, "message": msg}
+
+
 @router.post("/api/master/cases/{case_id}/answer")
 async def api_answer(case_id: str, body: AnswerIn, request: Request, master: dict = Depends(require_master_api)):
     """送出（或重送）解字。問事者只會收到【解讀】段落，其餘段落留在老師的解字稿。"""

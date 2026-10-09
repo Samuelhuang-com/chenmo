@@ -1,0 +1,18 @@
+{# 卦象（問事者看的簡圖）：本卦六爻由上而下，動爻標記，旁邊是變卦。需要變數 chart。 #}
+<div class="gua-view">
+  <figure class="gua-fig">
+    <div class="gua-lines" aria-hidden="true">
+      {% for ln in chart.lines|reverse %}<div class="gl {{ 'yang' if ln.yang else 'yin' }}{{ ' moving' if ln.moving }}"><i></i><i></i><em>{% if ln.moving %}{{ '○' if ln.yang else '×' }}{% endif %}</em></div>{% endfor %}
+    </div>
+    <figcaption>{{ chart.ben.name }}<small>本卦</small></figcaption>
+  </figure>
+  {% if chart.bian %}
+  <span class="gua-arrow" aria-hidden="true">→</span>
+  <figure class="gua-fig">
+    <div class="gua-lines" aria-hidden="true">
+      {% for ln in chart.lines|reverse %}{% set y = (not ln.yang) if ln.moving else ln.yang %}<div class="gl {{ 'yang' if y else 'yin' }}"><i></i><i></i><em></em></div>{% endfor %}
+    </div>
+    <figcaption>{{ chart.bian.name }}<small>變卦</small></figcaption>
+  </figure>
+  {% endif %}
+</div>

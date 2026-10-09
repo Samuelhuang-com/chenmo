@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}系統狀態｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">案前</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+<section class="paper">
+  <h2>系統狀態</h2>
+  <p class="hint">部署後先來這裡看一眼：版本、AI、寄信有沒有生效。</p>
+  <table class="sys-table">
+    {% for k, v in checks %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}
+  </table>
+  <div class="submit-row" style="margin-top:16px">
+    <button class="btn btn-zhu" type="button" id="ai-check">測試 AI 連線</button>
+    <span class="hint" id="ai-result" role="status"></span>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("ai-check").onclick = async function () {
+  var b = this, out = document.getElementById("ai-result");
+  b.disabled = true; out.textContent = " 測試中…"; out.className = "hint";
+  try {
+    var r = await fetch("/api/master/ai_check", { method: "POST" });
+    var d = await r.json();
+    out.textContent = (d.ok ? " ✔ " : " ✘ ") + d.message;
+    out.className = d.ok ? "hint" : "hint form-error";
+  } catch (e) { out.textContent = " ✘ 無法測試：" + e.message; }
+  b.disabled = false;
+};
+</script>
+{% endblock %}

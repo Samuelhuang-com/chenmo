@@ -19,14 +19,15 @@
     {% for c in cases %}
     <li>
       <a class="h-item" href="/c/{{ c.token }}">
-        <span class="t-char grid-paper">{{ c.char or "？" }}</span>
+        {% if c.kind == "yao" %}<span class="t-char t-gua-name">爻</span>{% else %}<span class="t-char grid-paper">{{ c.char or "？" }}</span>{% endif %}
         <span class="h-body">
           <span class="h-q">{{ c.question or "（未填寫問題）" }}</span>
+          {% if c.kind == "yao" and c.gua %}<span class="h-meta">{{ c.gua }}</span>{% endif %}
           {% if c.status.value == "answered" %}
           <span class="h-a">{{ c.answer[:90] }}{% if c.answer|length > 90 %}……{% endif %}</span>
           <span class="h-meta"><span class="state-done">已解</span>　解於 {{ c.answered_at | fmt_ms }}</span>
           {% else %}
-          {% if c.rewrite_requested_at %}<span class="h-meta"><span class="state-wait">老師請你重寫</span>　點進來重新書寫</span>
+          {% if c.rewrite_requested_at %}<span class="h-meta"><span class="state-wait">老師請你{{ "重新起卦" if c.kind == "yao" else "重寫" }}</span>　點進來{{ "重新擲錢" if c.kind == "yao" else "重新書寫" }}</span>
           {% else %}<span class="h-meta"><span class="state-wait">待老師解讀</span>　呈送於 {{ c.submitted_at | fmt_ms }}</span>{% endif %}
           {% endif %}
         </span>

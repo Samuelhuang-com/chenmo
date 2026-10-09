@@ -59,6 +59,21 @@ class Case(BaseModel):
     follow_of: str = ""                  # 追問：指向上一筆案件的 token
     follow_chain: list[dict] = Field(default_factory=list)   # 追問脈絡：[{"question","char"}…]，由舊到新（只存問題與字）
     redo_of: str = ""                    # 重寫時，指向被取代的舊案件 token
+    # ---- 六龍問爻 ----
+    kind: str = "char"                   # char：問字／yao：問爻
+    asked_for: str = ""                  # 為誰問：自己、家人、伴侶、朋友、其他
+    category: str = ""                   # 問事類別（選填）
+    yao_values: list[int] = Field(default_factory=list)   # 初爻→上爻，6/7/8/9
+    yao_source: str = ""                 # online：線上擲／manual：自己的銅錢／mixed
+    yao_clears: int = 0                  # 擲到一半清除重來的次數
+    cast_at: int | None = None           # 起卦時間（第六爻擲出的時間），排盤依此
+    gua: str = ""                        # 卦名摘要，例「澤火革 → 澤山咸」
+    yongshen: dict = Field(default_factory=dict)   # 老師選定的用神 {"liuqin","line","set_by"}
+    followups: list[str] = Field(default_factory=list)   # 老師確認的 3 個追問（空則用系統預設）
+    verify_status: str = ""              # 卦例回饋：應驗／部分應驗／未應驗
+    verify_note: str = ""
+    verified_at: int | None = None
+    derived_yao: dict = Field(default_factory=dict)   # 問字案件「以字起卦」的參考卦
 
     @computed_field
     @property
@@ -78,7 +93,8 @@ class Case(BaseModel):
                                         "status", "stroke_count",
                                         "created_at", "submitted_at", "answered_at", "answer",
                                         "rewrite_requested_at", "rewrite_reason", "reading_edited_at",
-                                        "answer_html"})
+                                        "answer_html", "kind", "asked_for", "category",
+                                        "yao_values", "cast_at", "gua"})
 
 
 ZODIAC = "鼠牛虎兔龍蛇馬羊猴雞狗豬"
@@ -175,3 +191,41 @@ class SponsorIn(BaseModel):
 class NotesIn(BaseModel):
     body: str = Field(max_length=20000)
     reading_html: str | None = Field(default=None, max_length=40000)
+
+
+ASKED_FOR = ("自己", "家人", "伴侶", "朋友", "其他")
+YAO_CATEGORIES = ("財運", "事業", "感情", "健康", "考試", "出行", "失物", "其他")
+
+
+class YaoStartIn(BaseModel):
+    """問爻：開始起卦前填的資料（與問字相同的驗證規則）。"""
+    question: str
+    birth_year: int
+    gender: str
+    nickname: str = Field(default="", max_length=30)
+    asked_for: str = "自己"
+    category: str = ""
+    redo_of: str = Field(default="", max_length=64)
+    follow_of: str = Field(default="", max_length=64)
+
+    _q = field_validator("question")(SubmitIn._q.__func__)
+    _by = field_validator("birth_year")(SubmitIn._by.__func__)
+    _g = field_validator("gender")(SubmitIn._g.__func__)
+    _nn = field_validator("nickname")(SubmitIn._nn.__func__)
+
+    @field_validator("asked_for")
+    @classmethod
+    def _af(cls, v: str) -> str:
+        if v not in ASKED_FOR:
+            raise ValueError("請選擇為誰而問")
+        return v
+
+    @field_validator("category")
+    @classmethod
+    def _cat(cls, v: str) -> str:
+        return v if v in YAO_CATEGORIES else ""
+
+
+class TossIn(BaseModel):
+    backs: int | None = Field(default=None, ge=0, le=3)   # 手動模式：三枚中有幾個「背」；None = 線上擲
+    shake_ms: int = Field(default=0, ge=0, le=600000)

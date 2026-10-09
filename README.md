@@ -46,6 +46,28 @@ uvicorn app.main:app --reload --port 8000
 
 **收回與重送**：已送出的字可按「收回」，問事者頁面會回到「等待老師解讀」；修改後按「重送解讀」即可。已解紀錄會顯示送出次數。
 
+## 封測功能（功能開關）
+
+新功能上線前，可以只開放給指定 Email。目前有開關的功能：`yao`（六龍問爻）。
+
+| 誰看得到 | 條件 |
+|---|---|
+| 老師 | 一律看得到 |
+| 封測名單 | 用 Google 登入，且 Email 在名單內 |
+| 其他人 | 看不到入口；直接打網址也是 404 |
+
+- 名單管理：老師端「封測名單」`/master/flags`，可新增／移除 Email、一鍵正式開放，60 秒內生效，不必重新部署
+- 也可以用環境變數預先放名單：`FEATURE_YAO_EMAILS=a@gmail.com,b@gmail.com`；`FEATURE_YAO_ALL=true` 則直接全開
+- 資料存在 `feature_flags/yao`（Firestore）或 SQLite 的 `feature_flags` 表
+- 新增問爻路由時一律掛 `Depends(require_feature("yao"))`；模板用 `'yao' in request.state.features` 判斷是否顯示入口
+
+## 六龍問爻：排盤引擎
+
+`app/services/liuyao/` 是純規則的六爻排盤，不連網、不依賴外部套件：64 卦、京房八宮世應、納甲、六親、六神、伏神、卦身、互錯綜，以及干支曆（立春換年、節氣換月、子初換日可切換、旬空）。節氣用天文公式計算，誤差約 15 分鐘；起卦時間落在交節前後 1 小時內會提醒核對。
+
+- 老師排盤工具：`/master/yao/paipan`，選六爻與時間即可排盤，用來和自己慣用的排法對照
+- 標準答案：`tests/liuyao/golden_cases.json`，發現排法不同時，把那組卦照格式加進去，`pytest -q` 就會檢查
+
 ## 部署到 Google Cloud
 
 見 [docs/GCP部署指南.md](docs/GCP部署指南.md)。簡要流程（在 Cloud Shell）：

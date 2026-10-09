@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}六龍問爻｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/">首頁</a><a href="/ask">問字</a>{% endblock %}
+{% block main %}
+<div class="ask-wrap yao-wrap">
+  <h1 class="ask-title">六龍問爻</h1>
+  <p class="beta-badge">封測中・僅受邀者可見</p>
+{% if need_login %}
+  <section class="paper login-gate">
+    <h2>先登入，再問事</h2>
+    <a class="btn btn-zhu" href="/me/login?next=/yao">用 Google 帳號登入</a>
+  </section>
+{% else %}
+  {% if note and note.kind == "redo" %}<section class="paper redo-note">
+    <h2>老師請你重新起卦</h2>
+    <p>{{ note.reason or "請靜下心，再擲一次。" }}</p>
+    <p class="hint">問題與資料已幫你帶入，確認後重新擲錢即可。</p>
+  </section>{% elif note and note.kind == "follow" %}<section class="paper redo-note follow-note">
+    <h2>接著追問</h2>
+    <p class="hint">上一題：{{ note.prev }}</p>
+  </section>{% endif %}
+  {% if student %}<p class="as-who">以 {{ student.name }} 的身分問事。<a href="/me">我的問字</a></p>
+  {% elif settings.google_login_enabled %}<p class="as-who">不登入也可以問事。想保存紀錄，請<a href="/me/login?next=/yao">先用 Google 登入</a>。</p>{% endif %}
+
+  <form id="yao-form" data-redo="{{ prefill.redo_of or '' }}" data-follow="{{ prefill.follow_of or '' }}" novalidate>
+  <section class="paper">
+    <h2>問事者</h2>
+    <div class="profile">
+      <div class="field">
+        <label for="nickname">姓氏／暱稱／英文名</label>
+        <input type="text" id="nickname" maxlength="30" autocomplete="off" placeholder="例如：王、小明、Amy" value="{{ prefill.nickname or '' }}">
+      </div>
+      <div class="field">
+        <label for="birth_year">年次</label>
+        <span class="roc">民國 <input type="number" id="birth_year" inputmode="numeric" min="1" max="{{ roc_now }}" placeholder="75" value="{{ prefill.birth_year or '' }}"> 年次</span>
+      </div>
+      <fieldset class="field">
+        <legend>性別</legend>
+        <span class="seg">
+          <input type="radio" name="gender" id="g-m" value="男" {% if prefill.gender == "男" %}checked{% endif %}><label for="g-m">男</label>
+          <input type="radio" name="gender" id="g-f" value="女" {% if prefill.gender == "女" %}checked{% endif %}><label for="g-f">女</label>
+        </span>
+      </fieldset>
+      <fieldset class="field">
+        <legend>為誰而問</legend>
+        <span class="seg seg-wrap">
+          {% for a in asked_for %}<input type="radio" name="asked_for" id="af-{{ loop.index }}" value="{{ a }}" {% if (prefill.asked_for or "自己") == a %}checked{% endif %}><label for="af-{{ loop.index }}">{{ a }}</label>{% endfor %}
+        </span>
+      </fieldset>
+      <div class="field">
+        <label for="category">問事類別（選填）</label>
+        <select id="category"><option value="">不選</option>{% for c in categories %}<option {% if prefill.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      </div>
+    </div>
+  </section>
+
+  <section class="paper">
+    <h2><label for="question">所問何事</label></h2>
+    <p class="hint">一次只問一件事，一百字以內。</p>
+    <textarea id="question" rows="3" data-max="{{ max_chars }}" placeholder="例如：這次的工作面試，結果會如何？">{{ prefill.question or '' }}</textarea>
+    <div class="counter" id="counter" aria-live="polite">0 / {{ max_chars }}</div>
+  </section>
+
+  <section class="paper repeat-note" id="repeat" hidden>
+    <h2>你最近問過類似的事</h2>
+    <p id="repeat-text"></p>
+    <p class="hint">古人說「初筮告，再三瀆」：同一件事反覆占問，心就不定了。建議先等老師對上一卦的回覆，或換個角度再問。</p>
+    <div class="keep-row">
+      <a class="btn" id="repeat-view" href="#">看上次的卦</a>
+      <button class="btn btn-tong" id="repeat-go" type="button">仍要起卦</button>
+    </div>
+  </section>
+  <p class="form-error" id="form-error" role="alert" hidden></p>
+  <div class="submit-row" id="start-row">
+    <span class="hint">確認後開始起卦，資料就不能再改。</span>
+    <button class="btn btn-tong" type="submit" id="start">開始起卦</button>
+  </div>
+  </form>
+
+  <section class="paper toss-stage" id="stage" hidden>
+    <h2>擲錢</h2>
+    <p class="toss-calm" id="calm">靜心片刻，心中默念所問。準備好了，按下銅錢。</p>
+    <button class="coins" id="coins" type="button" aria-label="擲錢">
+      {% for i in range(3) %}
+      <span class="coin" data-i="{{ i }}"><span class="coin-inner">
+        <span class="coin-face zi"><i class="hole"></i><b class="t">辰</b><b class="r">通</b><b class="b">墨</b><b class="l">寶</b></span>
+        <span class="coin-face bei"><i class="hole"></i></span>
+      </span></span>
+      {% endfor %}
+    </button>
+    <p class="toss-count" id="toss-count" aria-live="polite">第 1 次・共 6 次</p>
+    <p class="hint toss-help">有字的一面是「字」，素面是「背」。按住銅錢搖一搖，放開就擲出。</p>
+
+    <div class="manual" id="manual" hidden>
+      <p class="hint">用自己的銅錢擲，每擲一次，選出現了幾個「背」：</p>
+      <div class="manual-btns">
+        <button class="btn" type="button" data-backs="0">三個字</button>
+        <button class="btn" type="button" data-backs="1">一背二字</button>
+        <button class="btn" type="button" data-backs="2">二背一字</button>
+        <button class="btn" type="button" data-backs="3">三個背</button>
+      </div>
+    </div>
+    <div class="toss-tools">
+      <button class="linkish" type="button" id="shake-toggle" hidden>搖手機擲錢</button>
+      <button class="linkish" type="button" id="sound-toggle" aria-pressed="false">音效：關</button>
+      <button class="linkish" type="button" id="manual-toggle">我想用自己的銅錢</button>
+    </div>
+
+    <ol class="gua-build" id="gua" reversed aria-label="卦象，由下而上">
+      {% for i in range(6, 0, -1) %}<li class="slot" data-pos="{{ i }}"><span class="slot-label">{{ ["初","二","三","四","五","上"][i-1] }}爻</span><span class="yao-line"></span><span class="slot-mark"></span><span class="slot-text"></span></li>{% endfor %}
+    </ol>
+
+    <div class="gua-done" id="done" hidden>
+      <p class="gua-title" id="gua-title"></p>
+      <p class="hint">卦已立成。呈送後老師會在案前為你解卦，完成時頁面會自動更新。</p>
+      <div class="submit-row">
+        <button class="linkish" type="button" id="reset">全部重擲</button>
+        <button class="btn btn-zhu" type="button" id="submit">呈送</button>
+      </div>
+    </div>
+  </section>
+{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/yao-toss.js?v={{ asset_v }}"></script>
+{% endblock %}

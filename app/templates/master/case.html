@@ -61,7 +61,9 @@
         <input type="text" id="jiezi-char" maxlength="2" autocomplete="off" value="{{ case.char }}">
         <button class="btn" type="button" id="jiezi-run">帶出字資料</button>
         <button class="btn" type="button" id="jiezi-undo" hidden>復原原文</button>
+        {% if 'yao' in (request.state.features or []) %}<button class="btn" type="button" id="derive-yao" title="梅花易數：用此字的康熙筆畫加時辰起一卦">以此字起卦</button>{% endif %}
       </div>
+      {% if 'yao' in (request.state.features or []) %}<p class="hint" id="derive-state">{% if case.derived_yao %}已起參考卦：「{{ case.derived_yao.char }}」{{ case.derived_yao.strokes }} 畫，{{ case.derived_yao.gua }}　<a href="/master/yao/paipan?v={{ case.derived_yao["values"]|join('') }}&t={{ case.derived_yao.when }}&zi=1" target="_blank" rel="noopener" id="derive-open">看卦盤</a>{% endif %}</p>{% endif %}
       <p class="hint" id="jiezi-state">部首、筆畫、五行與《說文解字》由字庫帶出；字義與解讀為 AI 草稿，請審閱後再送出。</p>
       <textarea id="answer" data-auto="{{ '1' if (not case.notes and not case.answer and not case.draft) else '' }}">{% if case.notes %}{{ case.notes }}{% elif case.answer %}【解讀】
 {{ case.answer }}{% elif case.draft %}{{ case.draft }}{% else %}【此字】
@@ -156,4 +158,22 @@
 {% endblock %}
 {% block scripts %}
 <script type="module" src="/static/js/master-case.js?v={{ asset_v }}"></script>
+{% if 'yao' in (request.state.features or []) %}<script type="module">
+  // 以字起卦（梅花易數）：結果在新分頁的排盤工具打開
+  const btn = document.getElementById("derive-yao");
+  btn?.addEventListener("click", async () => {
+    const st = document.getElementById("derive-state");
+    const char = document.getElementById("jiezi-char").value.trim();
+    btn.disabled = true;
+    const r = await fetch(`/api/master/yao/derive/{{ case.id }}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ char }) });
+    btn.disabled = false;
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { st.textContent = d.detail || "起卦失敗"; return; }
+    st.innerHTML = "";
+    st.append(`已起參考卦：「${d.char}」${d.strokes} 畫，${d.gua}（${d.formula}）　`);
+    const a = Object.assign(document.createElement("a"), { href: d.url, target: "_blank", rel: "noopener", textContent: "看卦盤" });
+    st.append(a);
+    window.open(d.url, "_blank", "noopener");
+  });
+</script>{% endif %}
 {% endblock %}

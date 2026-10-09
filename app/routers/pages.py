@@ -64,7 +64,6 @@ async def case_page(request: Request, token: str, claim: str = ""):
     case = await repo.get_by_token(token)
     if not case:
         raise HTTPException(404, "查無此案件")
-    strokes = visible_strokes(await repo.list_events(case.id))
     from app.auth import current_student
     student = current_student(request)
     claimed = False
@@ -73,6 +72,15 @@ async def case_page(request: Request, token: str, claim: str = ""):
         case = await repo.update(case.id, owner_email=student["email"], owner_name=student.get("name", ""))
         claimed = True
     from app.services.followups import suggest
+    if case.kind == "yao":   # 六龍問爻：問事者只看卦象與老師解讀，完整卦盤在老師端
+        from app.routers.yao import chart_of
+        return templates.TemplateResponse(request, "yao_case.html",
+                                          {"followups": (case.followups or suggest(case.question)) if case.status.value == "answered" else [],
+                                           "case": case, "chart": chart_of(case), "student": student,
+                                           "is_owner": bool(student and student["email"] == case.owner_email),
+                                           "claimed": claimed,
+                                           "can_claim": bool(not case.owner_email and case.status.value != "drafting")})
+    strokes = visible_strokes(await repo.list_events(case.id))
     return templates.TemplateResponse(request, "case.html",
                                       {"followups": suggest(case.question) if case.status.value == "answered" else [],
                                        "case": case, "strokes": strokes, "student": student,

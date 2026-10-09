@@ -1,53 +1,47 @@
 {% extends "base.html" %}
-{% block title %}問字結果｜{{ settings.app_name }}{% endblock %}
+{% block title %}問爻結果｜{{ settings.app_name }}{% endblock %}
 {% block main %}
 <div class="case-wrap">
   {% if is_owner %}<p class="as-who">{% if claimed %}已收進你的「我的問字」。{% endif %}<a href="/me">回我的問字</a></p>{% endif %}
   <section class="paper">
     <h2>所問</h2>
     <p class="case-q">{{ case.question or "（未填寫）" }}</p>
-    <p class="case-meta">{% if case.profile_text %}{{ case.profile_text }}<br>{% endif %}呈送於 {{ case.submitted_at | fmt_ms }}{% if case.char_source == "picked" %}，自選字「{{ case.char }}」{% elif case.char %}，所寫為「{{ case.char }}」{% endif %}</p>
-    <div class="case-pad pad-box grid-paper">
-      <div class="pad-guide" aria-hidden="true">{% if case.char_source == "picked" %}{{ case.char }}{% endif %}</div>
-      <canvas id="pad" aria-label="您寫下的字"></canvas>
-    </div>
-    {% if strokes %}<div class="pad-tools" style="justify-content:center">
-      <button class="btn" type="button" id="replay">重看書寫過程</button>
-    </div>{% endif %}
+    <p class="case-meta">{% if case.profile_text %}{{ case.profile_text }}<br>{% endif %}{% if case.asked_for and case.asked_for != "自己" %}為{{ case.asked_for }}而問，{% endif %}起卦於 {{ case.cast_at | fmt_ms }}</p>
+    {% if chart %}{% include "_yao_lines.html" %}{% endif %}
   </section>
 
   {% if case.status.value == "answered" %}
   <section class="paper">
-    <h2>老師解讀</h2>
+    <h2>老師解卦</h2>
     {% if case.answer_html %}<div class="answer rich">{{ case.answer_html | safe }}</div>{% else %}<div class="answer">{{ case.answer }}</div>{% endif %}
     <p class="answer-sign">解於 {{ case.answered_at | fmt_ms }}{% if case.reading_edited_at %}（老師於 {{ case.reading_edited_at | fmt_ms }} 更新）{% endif %}</p>
   </section>
   {% if followups %}
   <section class="paper followups">
     <h2>想再多問一點？</h2>
-    <p class="hint">點一個問題，再寫一個字，老師會接著為你解讀。</p>
+    <p class="hint">點一個問題，再起一卦，老師會接著為你解讀。</p>
     <div class="followup-list">
-      {% for f in followups %}<a class="followup" href="/ask?follow={{ case.token }}&n={{ loop.index0 }}">{{ f }}</a>{% endfor %}
+      {% for f in followups %}<a class="followup" href="/yao?follow={{ case.token }}&n={{ loop.index0 }}">{{ f }}</a>{% endfor %}
     </div>
-    {% if 'yao' in (request.state.features or []) %}<p class="cross-links">也可以擲錢起一卦來問：{% for f in followups %}<a href="/yao?follow={{ case.token }}&n={{ loop.index0 }}">第{{ "一二三"[loop.index0] }}題</a>{% endfor %}</p>{% endif %}
+    <p class="cross-links">也可以改用寫字來問：{% for f in followups %}<a href="/ask?follow={{ case.token }}&n={{ loop.index0 }}">第{{ "一二三"[loop.index0] }}題</a>{% endfor %}</p>
   </section>
   {% endif %}
   {% if case.show_sponsor %}{% include "_sponsor.html" %}{% endif %}
   {% elif case.status.value == "submitted" and case.rewrite_requested_at %}
   <section class="paper redo-note" id="waiting">
-    <h2>老師請你重寫這個字</h2>
-    <p>{{ case.rewrite_reason or "上一次的字跡看不太清楚，請再寫一次。" }}</p>
-    <a class="btn btn-zhu" href="/ask?redo={{ case.token }}">重新書寫</a>
+    <h2>老師請你重新起卦</h2>
+    <p>{{ case.rewrite_reason or "請靜下心，再擲一次。" }}</p>
+    <a class="btn btn-tong" href="/yao?redo={{ case.token }}">重新起卦</a>
   </section>
   {% elif case.status.value == "submitted" %}
   <section class="paper waiting" id="waiting">
     <div class="ink-drop" aria-hidden="true"></div>
-    <p>已呈老師案前，解讀完成時此頁會自動更新。</p>
+    <p>卦已呈老師案前，解卦完成時此頁會自動更新。</p>
     <p class="case-meta">可將此頁加入書籤，日後回來查看。</p>
   </section>
   {% else %}
   <section class="paper waiting">
-    <p>此字尚未呈送。<a href="/ask">重新問字</a></p>
+    <p>這一卦尚未呈送。<a href="/yao">回到問爻</a></p>
   </section>
   {% endif %}
 
@@ -62,15 +56,13 @@
         {% else %}<a class="btn btn-zhu" href="/me/login?next={{ ('/c/' ~ case.token ~ '?claim=1') | urlencode }}">登入並收進我的問字</a>{% endif %}
       {% endif %}
     </div>
-    <p class="hint" id="copy-state" aria-live="polite">{% if can_claim and settings.google_login_enabled %}用 Google 登入後，這一筆會收進「我的問字」，換手機也找得到。{% endif %}</p>
+    <p class="hint" id="copy-state" aria-live="polite"></p>
   </section>
   {% endif %}
 </div>
-<script id="strokes-data" type="application/json">{{ strokes | tojson }}</script>
 {% endblock %}
 {% block scripts %}
 <script type="module">
-  import { replayInto, drawStatic } from "/static/js/replay.js";
   import { Socket } from "/static/js/ws-client.js";
   const copyBtn = document.getElementById("copy-link");
   if (copyBtn) copyBtn.onclick = async () => {
@@ -78,16 +70,10 @@
     try { await navigator.clipboard.writeText(url); document.getElementById("copy-state").textContent = "已複製連結。"; }
     catch { prompt("請長按複製這個連結", url); }
   };
-  const strokes = JSON.parse(document.getElementById("strokes-data").textContent);
-  const canvas = document.getElementById("pad");
-  drawStatic(canvas, strokes);
-  if (document.getElementById("replay")) document.getElementById("replay").onclick = () =>
-    replayInto(canvas, strokes.map(s => ({ ...s, type: "stroke" })));
   {% if case.status.value in ("submitted", "answered") %}
-  const sock = new Socket(`/ws/user/{{ case.token }}`, msg => {
-    if (["answer_ready", "answer_retracted", "rewrite_requested"].includes(msg.type)) location.reload();
+  new Socket(`/ws/user/{{ case.token }}`, msg => {
+    if (["answer_ready", "answer_retracted", "rewrite_requested", "case_deleted"].includes(msg.type)) location.reload();
     if (msg.type === "case_replaced") location.href = msg.url;
-    if (msg.type === "case_deleted") location.reload();
   });
   setInterval(async () => {
     const r = await fetch(`/api/cases/{{ case.token }}`);

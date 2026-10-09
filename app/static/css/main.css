@@ -420,3 +420,162 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .follow-ctx { border-left: 3px solid var(--zhu); background: rgba(178,58,46,.06); padding: 10px 14px; margin: 0 0 12px; font-size: var(--step--1); }
 .follow-ctx ol { margin: 6px 0 6px 1.2em; padding: 0; }
 .follow-ctx .fc-char { display: inline-block; margin-left: .5em; padding: 0 .35em; border: 1px solid var(--zhu); color: var(--zhu); font-size: 1.15em; }
+
+.sys-table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+.sys-table th { text-align: left; font-weight: 600; padding: 8px 12px 8px 0; white-space: nowrap; vertical-align: top; }
+.sys-table td { padding: 8px 0; word-break: break-all; }
+.sys-table tr + tr { border-top: 1px solid rgba(0,0,0,.08); }
+
+/* ---------- 功能開關（封測） ---------- */
+.beta-badge { display: inline-block; font-size: 12px; color: #9c7c3c; border: 1px solid #9c7c3c;
+  padding: 1px 8px; border-radius: 2px; letter-spacing: .1em; margin: 0 0 8px; }
+.home-doors { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn-tong { background: #9c7c3c; border-color: #9c7c3c; color: var(--xuan);
+  font-family: var(--kai); font-size: var(--step-1); letter-spacing: .4em; padding: 10px 28px 10px 34px; }
+.btn-tong small { font-family: var(--song); font-size: 11px; letter-spacing: .1em; margin-left: -.2em; opacity: .85; }
+.btn-tong:hover { background: #7f6430; border-color: #7f6430; }
+.flags h3 { font-size: var(--step-0); margin: 20px 0 8px; }
+.flags-list { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.flags-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  border-bottom: 1px dashed var(--xuan-shade); padding: 6px 0; word-break: break-all; }
+.flags-add { display: flex; gap: 8px; }
+.flags-add input { flex: 1; min-width: 0; }
+.flags-msg { color: var(--zhu); }
+.state-on { color: #3d7a4a; }
+.state-beta { color: #9c7c3c; }
+.btn-sm { padding: 4px 10px; font-size: 13px; }
+
+/* ---------- 問爻：排盤 ---------- */
+.yao-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px 12px; margin-bottom: 12px; }
+.yao-inputs label { display: grid; gap: 2px; font-size: 13px; color: var(--mo-soft); }
+.yao-inputs select, .paipan-time input[type=datetime-local] { font: inherit; padding: 6px 8px; border: 1px solid #b9ab8f; background: rgba(255,255,255,.5); border-radius: 2px; color: var(--mo); }
+.paipan-time { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.paipan-time label { display: grid; gap: 2px; font-size: 13px; color: var(--mo-soft); }
+.paipan-time label.check { display: flex; align-items: center; gap: 6px; padding-bottom: 10px; }
+.paipan-head { margin: 24px 0 12px; border-top: 1px solid var(--xuan-shade); padding-top: 16px; }
+.paipan-head p { margin: 0 0 6px; }
+.gua-names { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.gua-main { font-family: var(--kai); font-size: var(--step-1); }
+.gua-names .arrow { color: var(--zhu); }
+.table-wrap { overflow-x: auto; }
+.pan { width: 100%; border-collapse: collapse; font-size: 15px; white-space: nowrap; }
+.pan th { font-weight: 400; font-size: 12px; color: var(--mo-soft); text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--xuan-shade); }
+.pan td { padding: 8px; border-bottom: 1px dashed var(--xuan-shade); vertical-align: middle; }
+.pan .qin b { font-weight: 600; margin: 0 2px; }
+.pan .qin small { margin-left: 6px; color: var(--zhu); font-size: 12px; }
+.pan .fu { color: var(--mo-soft); font-size: 13px; }
+.pan .shiying { color: var(--zhu); font-weight: 600; }
+.pan .dong { color: var(--zhu); font-weight: 600; }
+.pan .marks { font-size: 13px; color: var(--mo-soft); }
+.pan tr.is-shi td { background: rgba(178, 58, 46, .05); }
+.yao { display: inline-flex; gap: 8px; width: 72px; }
+.yao i { display: block; height: 9px; background: var(--mo); flex: 1; border-radius: 1px; }
+.yao.yang i + i { margin-left: -8px; }
+.pan tr.moving .yao i { background: var(--zhu); }
+
+/* ---------- 問爻：擲錢 ---------- */
+.seg-wrap { flex-wrap: wrap; }
+.yao-wrap select { font: inherit; padding: 8px 10px; border: 1px solid #b9ab8f; background: rgba(255,255,255,.5); border-radius: 2px; color: var(--mo); }
+.form-error { color: var(--zhu); }
+.toss-stage { text-align: center; }
+.toss-calm { color: var(--mo-soft); margin: 0 0 8px; }
+.coins { display: flex; justify-content: center; gap: 18px; padding: 72px 8px 18px; margin: 0 auto; background: none; border: 0;
+  cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; perspective: 700px; }
+.coins:disabled { cursor: default; opacity: .85; }
+.coins:focus-visible { outline: 2px solid var(--zhu); outline-offset: 4px; }
+.coins.is-manual { cursor: default; }
+.coin { width: 76px; height: 76px; display: block; }
+.coin-inner { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; }
+.coin-face { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background: radial-gradient(circle at 35% 30%, #d8b56a, #a6833f 55%, #7a5d26);
+  box-shadow: inset 0 0 0 4px #8b6b2e, inset 0 0 0 6px #c9a65c, 0 3px 6px rgba(0,0,0,.25); }
+.coin-face.bei { transform: rotateY(180deg); background: radial-gradient(circle at 35% 30%, #cfae66, #9a7a3a 55%, #6f5422); }
+.coin-face .hole { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  background: var(--xuan); box-shadow: 0 0 0 3px #8b6b2e; }
+.coin-face b { position: absolute; font-family: var(--kai); font-weight: 400; font-size: 15px; color: #3a2a0c; line-height: 1; }
+.coin-face .t { top: 10px; left: 50%; transform: translateX(-50%); }
+.coin-face .b { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.coin-face .l { left: 10px; top: 50%; transform: translateY(-50%); }
+.coin-face .r { right: 10px; top: 50%; transform: translateY(-50%); }
+.coins.shaking .coin { animation: coin-shake .12s infinite alternate; }
+.coins.shaking .coin:nth-child(2) { animation-delay: .04s; }
+.coins.shaking .coin:nth-child(3) { animation-delay: .08s; }
+@keyframes coin-shake { from { transform: translate(-2px, 1px) rotate(-4deg); } to { transform: translate(2px, -1px) rotate(4deg); } }
+.toss-count { font-family: var(--kai); font-size: var(--step-1); margin: 6px 0 2px; }
+.toss-help { margin: 0 0 8px; }
+.linkish { background: none; border: 0; color: var(--mo-soft); text-decoration: underline; font: inherit; font-size: 13px; cursor: pointer; padding: 6px; }
+.manual { margin: 8px 0; }
+.manual-btns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-width: 360px; margin: 0 auto; }
+.gua-build { list-style: none; padding: 0; margin: 20px auto 0; max-width: 360px; display: grid; gap: 10px; text-align: left; }
+.slot { display: grid; grid-template-columns: 3em 108px 1.5em 1fr; align-items: center; gap: 8px; min-height: 22px; color: var(--mo-soft); font-size: 13px; }
+.slot .yao-line { height: 12px; border: 1px dashed #c8b894; border-radius: 1px; }
+.slot.filled .yao-line { border: 0; animation: ink-in .5s ease-out; }
+.slot.yang .yao-line { background: var(--mo); }
+.slot.yin .yao-line { background: linear-gradient(90deg, var(--mo) 0 42%, transparent 42% 58%, var(--mo) 58%); }
+.slot.moving .yao-line { background-color: var(--zhu); }
+.slot.yin.moving .yao-line { background: linear-gradient(90deg, var(--zhu) 0 42%, transparent 42% 58%, var(--zhu) 58%); }
+.slot-mark { color: var(--zhu); font-weight: 600; }
+.slot.filled { color: var(--mo); }
+@keyframes ink-in { from { opacity: 0; transform: scaleX(.6); } to { opacity: 1; transform: none; } }
+.gua-done { margin-top: 20px; border-top: 1px solid var(--xuan-shade); padding-top: 16px; }
+.gua-title { font-family: var(--kai); font-size: var(--step-1); margin: 0 0 6px; }
+@media (prefers-reduced-motion: reduce) { .coins.shaking .coin, .slot.filled .yao-line { animation: none; } }
+
+/* 問事者看的卦象 */
+.gua-view { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 16px 0 4px; flex-wrap: wrap; }
+.gua-fig { margin: 0; display: grid; justify-items: center; gap: 10px; }
+.gua-fig figcaption { font-family: var(--kai); font-size: var(--step-0); display: grid; justify-items: center; }
+.gua-fig figcaption small { font-family: var(--song); font-size: 12px; color: var(--mo-soft); }
+.gua-lines { display: grid; gap: 9px; }
+.gl { display: grid; grid-template-columns: 42px 42px 16px; gap: 0; align-items: center; }
+.gl i { height: 11px; background: var(--mo); display: block; }
+.gl.yang i:first-child { grid-column: 1 / 3; }
+.gl.yang i + i { display: none; }
+.gl.yin i:first-child { margin-right: 7px; }
+.gl.yin i + i { margin-left: 7px; }
+.gl.moving i { background: var(--zhu); }
+.gl em { font-style: normal; color: var(--zhu); font-size: 13px; padding-left: 4px; }
+.gua-arrow { color: var(--zhu); font-size: 20px; }
+
+/* 案前：問爻卡片 */
+.ticket-yao { border-left-color: #9c7c3c; }
+.ticket .t-gua { display: grid; align-content: center; justify-items: stretch; place-items: center stretch; gap: 4px; padding: 8px 10px; }
+.mg { display: block; height: 5px; background: var(--mo); }
+.mg.yin { background: linear-gradient(90deg, var(--mo) 0 40%, transparent 40% 60%, var(--mo) 60%); }
+.mg.moving { background-color: var(--zhu); }
+.mg.yin.moving { background: linear-gradient(90deg, var(--zhu) 0 40%, transparent 40% 60%, var(--zhu) 60%); }
+.mg.empty { background: none; border-top: 1px dashed #c8b894; height: 4px; }
+.tag-yao { display: inline-block; font-size: 12px; color: #9c7c3c; border: 1px solid #9c7c3c; padding: 0 4px; margin-right: 6px; border-radius: 2px; }
+.ticket-yao.live .t-meta::before { content: "正在擲錢 "; color: #9c7c3c; }
+.t-gua-name { font-family: var(--kai); color: #9c7c3c; border: 1px solid #c9b07a; }
+.yao-bench { max-width: 920px; margin: 0 auto; display: grid; gap: 20px; }
+.yao-bench .paper + .paper { margin-top: 0; }
+.yao-bench textarea { width: 100%; }
+.yao-bench #share-url { flex: 1; min-width: 0; }
+.toss-log tr.cleared td { color: var(--zhu); font-size: 13px; }
+
+/* ---------- 問爻：用神、經文、AI、規則庫 ---------- */
+.ys-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 8px 0; }
+.ys-row label { display: grid; gap: 2px; font-size: 13px; color: var(--mo-soft); }
+.ys-row select, .vf-row select { font: inherit; padding: 6px 8px; border: 1px solid #b9ab8f; background: rgba(255,255,255,.5); border-radius: 2px; color: var(--mo); }
+.zy p { margin: 0 0 8px; }
+.zy .zy-line { color: var(--zhu); }
+.ai-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+.ai-basis { margin: 0 0 10px; font-size: 14px; }
+.ai-basis summary { cursor: pointer; color: var(--mo-soft); }
+.sub-h { font-size: var(--step-0); margin: 20px 0 8px; }
+.fu-edit { display: grid; gap: 6px; }
+.fu-edit input, .rule-form input[type=text] { font: inherit; padding: 8px 10px; border: 1px solid #b9ab8f; background: rgba(255,255,255,.5); border-radius: 2px; }
+.rule-list { padding-left: 1.4em; display: grid; gap: 14px; }
+.rule-list li.off { opacity: .55; }
+.rule-form { display: grid; gap: 6px; }
+.rule-form textarea { width: 100%; }
+.rule-tools { display: flex; gap: 10px; align-items: center; justify-content: flex-end; font-size: 13px; }
+.vf-filter { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+.vf-filter a { color: var(--mo-soft); }
+.vf-filter a.on { color: var(--zhu); font-weight: 600; }
+.pan td.wrap { white-space: normal; min-width: 10em; }
+.cross-links { font-size: 14px; color: var(--mo-soft); margin-top: 12px; }
+.cross-links a { margin-right: 10px; }
+.repeat-note { border-left: 3px solid #9c7c3c; }
+.toss-tools { display: flex; justify-content: center; gap: 4px 16px; flex-wrap: wrap; }

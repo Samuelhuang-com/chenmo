@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}問爻｜{{ case.nickname or "案件" }}｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">回案前</a><a href="/master/history">已解紀錄</a><a href="/master/yao/paipan">排盤</a><a href="/master/yao/rules">規則庫</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+<div class="yao-bench" id="bench" data-case-id="{{ case.id }}" data-status="{{ case.status.value }}" data-n="{{ case.yao_values|length }}">
+  <section class="paper">
+    <p class="beta-badge">六龍問爻</p>
+    <p class="case-profile">{% if case.nickname %}<b>{{ case.nickname }}</b>　{% endif %}{{ case.profile_text or "（未填年次與性別）" }}　為{{ case.asked_for or "自己" }}而問{% if case.category %}・{{ case.category }}{% endif %}</p>
+    {% if case.follow_chain %}<p class="hint">追問，前面已問過：{% for c in case.follow_chain %}「{{ c.question }}」{% if c.char %}（{{ c.char }}）{% endif %}{% if not loop.last %}；{% endif %}{% endfor %}</p>{% endif %}
+    <p class="case-q">{{ case.question or "（未填寫）" }}</p>
+    <p><span class="status-pill">{{ {"drafting":"擲錢中","submitted":"待解","answered":"已解"}[case.status.value] }}</span>
+      {% if case.status.value == "drafting" %}<span class="hint" id="live-tag">已擲 {{ case.yao_values|length }} / 6，頁面會隨對方擲錢自動更新</span>{% endif %}</p>
+  </section>
+
+  <section class="paper paipan">
+    <h2>卦盤</h2>
+    {% if chart %}
+      {% include "master/_yao_chart.html" %}
+    {% else %}
+      <p class="hint">六爻擲滿後會自動排盤。</p>
+    {% endif %}
+  </section>
+
+  {% if chart %}
+  <section class="paper">
+    <h2>用神</h2>
+    <p>系統建議：<b>{{ ys.label }}</b>{% if ys.lines %}，在第 {{ ys.lines|join("、") }} 爻{% endif %}{% if ys.hidden %}（不上卦，取伏神）{% endif %}　<span class="hint">{{ ys.reason }}</span></p>
+    <div class="ys-row">
+      <label>改看
+        <select id="ys-target">
+          <option value="">依系統建議</option>
+          {% for q in ["父母","兄弟","子孫","妻財","官鬼"] %}<option value="q:{{ q }}" {% if case.yongshen.liuqin == q %}selected{% endif %}>{{ q }}</option>{% endfor %}
+          <option value="s:世" {% if case.yongshen.special == "世" %}selected{% endif %}>世爻</option>
+          <option value="s:應" {% if case.yongshen.special == "應" %}selected{% endif %}>應爻</option>
+        </select></label>
+      <label>兩現時取
+        <select id="ys-line"><option value="">系統判斷</option>{% for i in range(1,7) %}<option value="{{ i }}" {% if case.yongshen.line == i %}selected{% endif %}>第 {{ i }} 爻</option>{% endfor %}</select></label>
+      <button class="btn" type="button" id="ys-save">套用</button>
+    </div>
+    <p class="hint">用神會一起交給 AI 草稿。系統只建議，取用神以老師為準。</p>
+  </section>
+
+  <section class="paper zy">
+    <h2>經文</h2>
+    <p><b>{{ texts.ben_name }}</b>　{{ texts.guaci }}</p>
+    <p class="hint">彖曰：{{ texts.tuan }}</p>
+    {% for l in texts.moving_lines %}<p class="zy-line">{{ l }}</p>{% endfor %}
+    {% if texts.bian_name %}<p><b>{{ texts.bian_name }}</b>（變卦）　{{ texts.bian_guaci }}</p>{% endif %}
+    <p class="hint">{{ texts_note }}</p>
+  </section>
+  {% endif %}
+
+  <section class="paper">
+    <h2>擲錢紀錄</h2>
+    <p class="hint">擲法：{{ {"online":"線上擲錢（結果由系統產生）","manual":"自己的銅錢（問事者自行輸入）","mixed":"線上與自己的銅錢混用"}.get(case.yao_source, "尚未開始") }}{% if case.yao_clears %}　<b class="flags-msg">清除重擲 {{ case.yao_clears }} 次</b>{% endif %}</p>
+    {% if tosses %}
+    <div class="table-wrap"><table class="pan toss-log">
+      <thead><tr><th>次</th><th>爻</th><th>三枚</th><th>結果</th><th>距上一擲</th><th>搖錢</th><th>時間</th></tr></thead>
+      <tbody>
+      {% for e in tosses %}
+        {% if e.type == "toss" %}
+        <tr><td>{{ e.yao_n }}</td><td>{{ ["初","二","三","四","五","上"][e.yao_n-1] }}爻</td><td>{{ e.coins|join("") }}</td>
+          <td>{{ {6:"老陰 ×",7:"少陽",8:"少陰",9:"老陽 ○"}[e.value] }}</td><td>{{ e.pause_s }} 秒</td>
+          <td>{% if e.source == "manual" %}自己的銅錢{% elif e.shake_ms %}{{ (e.shake_ms/1000)|round(1) }} 秒{% else %}—{% endif %}</td><td>{{ e.ts | fmt_ms }}</td></tr>
+        {% else %}
+        <tr class="cleared"><td colspan="7">清除重擲（原本：{{ e.had|join(" ") }}）{{ e.ts | fmt_ms }}</td></tr>
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="hint">還沒開始擲。</p>{% endif %}
+  </section>
+
+  <section class="paper">
+    <h2><label for="reading">解卦（問事者會看到的內容）</label></h2>
+    <p class="hint">用白話寫給問事者看。卦盤、用神等專業資料只留在這裡，不會送出。內容會自動暫存。</p>
+    {% if chart %}<div class="ai-row">
+      <button class="btn" type="button" id="ai-run" {% if not ai_enabled %}disabled title="尚未設定 ANTHROPIC_API_KEY"{% endif %}>AI 解卦草稿</button>
+      <span class="hint" id="ai-state">{% if not ai_enabled %}尚未設定 AI 金鑰。{% else %}依卦盤、用神、經文、你的規則庫與此人以前問過的事產生，會放進下方欄位，請審閱修改。{% endif %}</span>
+    </div>
+    <details class="ai-basis" id="ai-basis" hidden><summary>AI 的判斷依據（給你核對，不會送出）</summary><ul id="ai-basis-list"></ul></details>{% endif %}
+    <textarea id="reading" rows="12" placeholder="例如：{{ case.nickname or '你' }}好，這一卦……">{{ reading_text }}</textarea>
+    <p class="hint" id="save-state" aria-live="polite"></p>
+
+    <h3 class="sub-h">解卦後給問事者的 3 個追問</h3>
+    <div class="fu-edit">{% for f in (followups + ["", "", ""])[:3] %}<input type="text" class="fu-item" maxlength="40" value="{{ f }}">{% endfor %}</div>
+    <p class="hint">問事者點了會回到問爻（也可以改用問字）接著問。AI 草稿會一起建議。<button class="linkish" type="button" id="fu-save">儲存追問</button><span id="fu-state"></span></p>
+
+    <label class="email-opt"><input type="checkbox" id="sponsor-toggle" {% if case.show_sponsor %}checked{% endif %}> 在這位問事者的頁面顯示「請老師喝杯咖啡」</label>
+    {% if case.owner_email %}<label class="email-opt"><input type="checkbox" id="email-student" checked> 送出時同時寄信給問事者（{{ case.owner_email }}）</label>{% endif %}
+
+    <div class="submit-row">
+      <span class="conn">{% if case.status.value == "answered" %}第 {{ case.revision }} 次送出，{{ case.answered_at | fmt_ms }}{% endif %}</span>
+      <span>
+        {% if case.status.value == "answered" %}
+          <button class="btn" type="button" id="retract">收回</button>
+          <button class="btn btn-zhu" type="button" id="update">更新解卦</button>
+        {% else %}
+          <button class="btn btn-zhu" type="button" id="send" {% if case.status.value != "submitted" %}disabled{% endif %}>{% if case.revision %}重送解卦{% else %}送出解卦{% endif %}</button>
+        {% endif %}
+      </span>
+    </div>
+    <p class="form-error" id="error" role="alert"></p>
+  </section>
+
+  {% if case.status.value == "answered" %}
+  <section class="paper">
+    <h2>卦例回饋</h2>
+    <p class="hint">事後若知道結果，記下來。累積的卦例會列在「規則庫」頁，方便回頭修正你的斷卦規則。</p>
+    <div class="ys-row">
+      <select id="vf-status">{% for v in ["", "應驗", "部分應驗", "未應驗"] %}<option value="{{ v }}" {% if case.verify_status == v %}selected{% endif %}>{{ v or "尚未得知" }}</option>{% endfor %}</select>
+      <button class="btn" type="button" id="vf-save">儲存</button><span class="hint" id="vf-state"></span>
+    </div>
+    <textarea id="vf-note" rows="2" maxlength="1000" placeholder="實際結果（例如：兩週後接到錄取通知）">{{ case.verify_note }}</textarea>
+  </section>
+  {% endif %}
+
+  <section class="paper">
+    <h2>問事者連結</h2>
+    <p class="hint">對方若關掉了網頁，把這個連結傳給他就能看到解卦。</p>
+    <div class="keep-row" style="justify-content:flex-start">
+      <input type="text" id="share-url" readonly value="{{ (site_url or '') }}/c/{{ case.token }}" aria-label="問事者連結">
+      <button class="btn" type="button" id="share-copy">複製連結</button>
+      <a class="btn" href="/c/{{ case.token }}" target="_blank" rel="noopener">開啟看看</a>
+    </div>
+  </section>
+
+  <section class="paper">
+    <h2>其他處理</h2>
+    {% if case.status.value == "submitted" %}
+    <p class="hint">{% if case.rewrite_requested_at %}已請對方重新起卦（{{ case.rewrite_requested_at | fmt_ms }}），等待新的卦。{% else %}問題太籠統、一次問了好幾件事時，可以請對方重新起卦。{% endif %}</p>
+    <textarea id="rewrite-reason" rows="2" maxlength="200" placeholder="想對問事者說的話（選填），例如：請只問一件事，再擲一次。"></textarea>
+    <button class="btn" type="button" id="rewrite">請對方重新起卦</button>
+    {% endif %}
+    <button class="btn btn-danger" type="button" id="delete">刪除這一筆</button>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module">
+  import { Socket } from "/static/js/ws-client.js";
+  const $ = (id) => document.getElementById(id);
+  const bench = $("bench"), caseId = bench.dataset.caseId, status = bench.dataset.status;
+  const err = (m) => { $("error").textContent = m || ""; };
+  const esc = (s) => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const toHtml = (t) => t.trim().split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+  const text = () => $("reading").value;
+  const api = (url, method = "POST", body) => fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  const detail = async (r) => { const d = await r.json().catch(() => ({})); return Array.isArray(d.detail) ? d.detail.map(x => x.msg).join("；") : (d.detail || "操作失敗"); };
+
+  // 自動暫存
+  let timer = null;
+  $("reading").addEventListener("input", () => {
+    $("save-state").textContent = "編輯中…";
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const r = await api(`/api/master/cases/${caseId}/notes`, "POST", { body: text(), reading_html: toHtml(text()) });
+      $("save-state").textContent = r.ok ? "已暫存" : "暫存失敗";
+    }, 1200);
+  });
+
+  $("send")?.addEventListener("click", async () => {
+    err("");
+    if (!text().trim()) return err("解卦內容是空的。");
+    $("send").disabled = true;
+    const r = await api(`/api/master/cases/${caseId}/answer`, "POST",
+      { body: text(), reading_html: toHtml(text()), email_student: !!$("email-student")?.checked });
+    if (!r.ok) { $("send").disabled = false; return err(await detail(r)); }
+    location.reload();
+  });
+  $("update")?.addEventListener("click", async () => {
+    err("");
+    const r = await api(`/api/master/cases/${caseId}/reading`, "PUT", { body: text(), reading_html: toHtml(text()) });
+    if (!r.ok) return err(await detail(r));
+    $("save-state").textContent = "已更新，問事者頁面已同步。";
+  });
+  $("retract")?.addEventListener("click", async () => {
+    const r = await api(`/api/master/cases/${caseId}/retract`);
+    if (!r.ok) return err(await detail(r));
+    location.reload();
+  });
+  $("rewrite")?.addEventListener("click", async () => {
+    const r = await api(`/api/master/cases/${caseId}/request_rewrite`, "POST", { reason: $("rewrite-reason").value });
+    if (!r.ok) return err(await detail(r));
+    location.reload();
+  });
+  $("delete").addEventListener("click", async () => {
+    if (!confirm("確定要刪除這一筆嗎？擲錢紀錄與解卦都會一併刪除，無法復原。")) return;
+    const r = await api(`/api/master/cases/${caseId}`, "DELETE");
+    if (r.ok) location.href = "/master";
+  });
+  $("sponsor-toggle").addEventListener("change", async (e) => {
+    await api(`/api/master/cases/${caseId}/sponsor`, "PUT", { show: e.target.checked });
+  });
+  const share = $("share-url");
+  if (!share.value.startsWith("http")) share.value = location.origin + share.value;
+  $("share-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(share.value); $("share-copy").textContent = "已複製"; }
+    catch { share.select(); }
+  });
+
+  // 用神
+  $("ys-save")?.addEventListener("click", async () => {
+    const t = $("ys-target").value, line = $("ys-line").value;
+    const body = { liuqin: t.startsWith("q:") ? t.slice(2) : "", special: t.startsWith("s:") ? t.slice(2) : "", line: line ? +line : null };
+    const r = await api(`/api/master/yao/cases/${caseId}/yongshen`, "PUT", body);
+    if (!r.ok) return err(await detail(r));
+    location.reload();
+  });
+
+  // AI 草稿
+  $("ai-run")?.addEventListener("click", async () => {
+    if (text().trim() && !confirm("AI 草稿會取代目前解卦欄的內容，要繼續嗎？")) return;
+    $("ai-run").disabled = true;
+    $("ai-state").textContent = "AI 正在看卦，約需 20 到 40 秒…";
+    const r = await api(`/api/master/yao/cases/${caseId}/ai`);
+    $("ai-run").disabled = false;
+    if (!r.ok) { $("ai-state").textContent = await detail(r); return; }
+    const d = await r.json();
+    $("reading").value = d.reading;
+    $("reading").dispatchEvent(new Event("input"));
+    const list = $("ai-basis-list"); list.innerHTML = "";
+    (d.basis || []).forEach(b => { const li = document.createElement("li"); li.textContent = b; list.appendChild(li); });
+    $("ai-basis").hidden = !(d.basis || []).length; $("ai-basis").open = true;
+    if ((d.followups || []).length) document.querySelectorAll(".fu-item").forEach((el, i) => { el.value = d.followups[i] || ""; });
+    $("ai-state").textContent = "已放入草稿（標記為 AI 草稿，請審閱後再送出）。追問也已更新，記得按「儲存追問」。";
+  });
+
+  // 追問
+  $("fu-save")?.addEventListener("click", async () => {
+    const items = [...document.querySelectorAll(".fu-item")].map(e => e.value.trim()).filter(Boolean);
+    const r = await api(`/api/master/yao/cases/${caseId}/followups`, "PUT", { items });
+    $("fu-state").textContent = r.ok ? "　已儲存" : "　儲存失敗";
+  });
+
+  // 卦例回饋
+  $("vf-save")?.addEventListener("click", async () => {
+    const r = await api(`/api/master/yao/cases/${caseId}/verify`, "PUT", { status: $("vf-status").value, note: $("vf-note").value });
+    $("vf-state").textContent = r.ok ? "　已儲存" : "　儲存失敗";
+  });
+
+  // 對方還在擲錢：每擲一次就重新整理卦盤
+  if (status === "drafting") {
+    new Socket("/ws/master", (msg) => {
+      if (msg.type === "case_update" && msg.case.id === caseId &&
+          (msg.case.status !== status || msg.case.yao_values.length !== +bench.dataset.n)) location.reload();
+      if (msg.type === "case_deleted" && msg.case_id === caseId) location.href = "/master";
+    });
+  }
+</script>
+{% endblock %}

@@ -845,3 +845,18 @@ def test_ai_context_includes_other_cases_of_same_login(monkeypatch):
     ctx = jiezi.build_context(case, jiezi.lookup("工"), analyze([], None), [], others)
     assert "以前還問過" in ctx and "感情要慢慢來" in ctx and "匿名的解讀" not in ctx
     assert asyncio.run(jiezi._other_cases(Case(**master.get(f"/api/master/cases/{anon}").json()["case"]), [])) == []
+
+
+def test_system_page_and_ai_check(monkeypatch):
+    master = TestClient(app)
+    assert master.get("/master/system", follow_redirects=False).status_code in (302, 303, 307, 401)
+    assert master.post("/api/master/ai_check").status_code == 401
+    login(master)
+    page = master.get("/master/system").text
+    assert "系統狀態" in page and "AI 金鑰" in page and "測試 AI 連線" in page
+    r = master.post("/api/master/ai_check").json()
+    assert r["ok"] is False and "ANTHROPIC_API_KEY" in r["message"]          # 測試環境沒設金鑰
+    import app.services.ai_draft as ai
+    async def fake_ping(): return True, "連線正常"
+    monkeypatch.setattr(ai, "ping", fake_ping)
+    assert master.post("/api/master/ai_check").json() == {"ok": True, "message": "連線正常"}

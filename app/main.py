@@ -16,13 +16,26 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import LoginRequired
 from app.config import get_settings
-from app.routers import api, master, pages, pwa, ws
+from app.routers import api, flags, master, pages, pwa, ws, yao
+from app.services.features import enabled_set
 from app.templating import templates
 
 logging.basicConfig(level=logging.INFO)
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, docs_url=None, redoc_url=None)
+
+
+# 功能開關：算出這個人看得到哪些封測功能，模板用 'yao' in request.state.features 判斷。
+# 必須在 SessionMiddleware 之前註冊（後註冊的在外層），才能讀到 request.session。
+@app.middleware("http")
+async def feature_flags(request: Request, call_next):
+    try:
+        request.state.features = await enabled_set(request.session)
+    except Exception:  # noqa: BLE001  開關壞了也不能讓整站壞掉
+        request.state.features = set()
+    return await call_next(request)
+
 
 app.add_middleware(
     SessionMiddleware,
@@ -40,6 +53,8 @@ app.include_router(api.router)
 app.include_router(master.router)
 app.include_router(ws.router)
 app.include_router(pwa.router)
+app.include_router(yao.router)
+app.include_router(flags.router)
 
 
 @app.exception_handler(LoginRequired)

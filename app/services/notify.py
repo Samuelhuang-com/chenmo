@@ -19,8 +19,39 @@ from app.templating import fmt_ms
 log = logging.getLogger(__name__)
 
 
+def build_yao_message(case: Case, link: str) -> EmailMessage:
+    """新問爻通知。"""
+    s = get_settings()
+    who = case.profile_text or "未填年次與性別"
+    if case.nickname:
+        who = f"{case.nickname}　{who}"
+    msg = EmailMessage()
+    msg["Subject"] = f"【{s.app_name}】新問爻「{case.gua}」— {re.sub(r'（.*?）', '', who)}"
+    msg["From"] = f"{s.app_name} <{s.smtp_user}>"
+    msg["To"] = ", ".join(s.notify_recipients)
+    pairs = [("所問", case.question), ("問事者", who), ("為誰問", case.asked_for or "自己"),
+             *([("類別", case.category)] if case.category else []),
+             ("卦", case.gua), ("起卦時間", fmt_ms(case.cast_at)),
+             *([("清除重擲", f"{case.yao_clears} 次")] if case.yao_clears else []),
+             *([("擲法", "自己的銅錢")] if case.yao_source == "manual" else [])]
+    msg.set_content("\n".join([f"有人在{s.app_name}呈送了問爻：", "", *[f"{k}：{v}" for k, v in pairs],
+                                "", f"前往解卦：{link}"]))
+    rows = "".join(f"<tr><td style='color:#6b625a;padding:4px 16px 4px 0;white-space:nowrap'>{k}</td>"
+                   f"<td style='padding:4px 0'>{escape(str(v))}</td></tr>" for k, v in pairs)
+    msg.add_alternative(f"""\
+<div style="font-family:'Noto Serif TC',serif;background:#ede5d3;color:#1f1b17;padding:24px;max-width:560px">
+  <div style="font-size:28px;line-height:1.3;margin-bottom:12px">{escape(case.gua)}</div>
+  <table style="border-collapse:collapse;font-size:15px">{rows}</table>
+  <p style="margin-top:24px"><a href="{escape(link)}"
+     style="background:#9c7c3c;color:#ede5d3;padding:10px 22px;text-decoration:none;letter-spacing:.2em">前往解卦</a></p>
+</div>""", subtype="html")
+    return msg
+
+
 def build_message(case: Case, link: str) -> EmailMessage:
     s = get_settings()
+    if case.kind == "yao":
+        return build_yao_message(case, link)
     char = case.char or "（未填）"
     source = "自選字" if case.char_source == "picked" else "手寫"
     who = case.profile_text or "未填年次與性別"
@@ -80,7 +111,8 @@ async def notify_new_case(case: Case, base_url: str) -> bool:
     if not s.email_enabled:
         log.info("new-case email skipped: SMTP_USER/SMTP_PASSWORD/收件人未設定")
         return False
-    link = f"{(s.site_url or base_url).rstrip('/')}/master/case/{case.id}"
+    path = "/master/yao/case/" if case.kind == "yao" else "/master/case/"
+    link = f"{(s.site_url or base_url).rstrip('/')}{path}{case.id}"
     try:
         await asyncio.wait_for(asyncio.to_thread(_send, build_message(case, link)), timeout=10)
         log.info("new-case email sent to %s", ", ".join(s.notify_recipients))
@@ -92,21 +124,23 @@ async def notify_new_case(case: Case, base_url: str) -> bool:
 
 def build_student_message(case: Case, link: str) -> EmailMessage:
     s = get_settings()
-    char = case.char or ""
+    yao = case.kind == "yao"
+    char = case.gua.split(" ")[0] if yao else (case.char or "")
+    what, mine = ("卦", "你的卦") if yao else ("字", "你寫的字")
     msg = EmailMessage()
-    msg["Subject"] = f"【{s.app_name}】老師已完成「{char}」字的解讀"
+    msg["Subject"] = f"【{s.app_name}】老師已完成「{char}」{what}的解讀"
     msg["From"] = f"{s.app_name} <{s.smtp_user}>"
     msg["To"] = case.owner_email
     name = case.owner_name or "你好"
     msg.set_content("\n".join([
         f"{name}，", "", f"你在{s.app_name}問的「{case.question}」，老師已經解讀好了。",
-        "點下面的連結就能看到你寫的字和老師的解讀：", "", link, "",
+        f"點下面的連結就能看到{mine}和老師的解讀：", "", link, "",
         "這個連結請自己保存，也可以登入後在「我的問字」找到。"]))
     msg.add_alternative(f"""\
 <div style="font-family:'Noto Serif TC',serif;background:#ede5d3;color:#1f1b17;padding:24px;max-width:560px">
-  <div style="font-size:56px;line-height:1;margin-bottom:12px">{escape(char)}</div>
+  <div style="font-size:{28 if yao else 56}px;line-height:1.2;margin-bottom:12px">{escape(char)}</div>
   <p>{escape(name)}，</p>
-  <p>你在{escape(s.app_name)}問的「{escape(case.question)}」，老師已經解讀好了。<br>點下面的按鈕，就能看到你寫的字和老師的解讀。</p>
+  <p>你在{escape(s.app_name)}問的「{escape(case.question)}」，老師已經解讀好了。<br>點下面的按鈕，就能看到{mine}和老師的解讀。</p>
   <p style="margin-top:24px"><a href="{escape(link)}"
      style="background:#b23a2e;color:#ede5d3;padding:10px 22px;text-decoration:none;letter-spacing:.2em">查看解讀</a></p>
   <p style="color:#6b625a;font-size:13px;margin-top:24px">按鈕打不開時，請複製這個連結：<br>{escape(link)}<br>也可以登入後在「我的問字」找到。</p>

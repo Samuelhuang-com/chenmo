@@ -1,0 +1,34 @@
+{# 卦盤（圖二）：排盤工具與問爻工作台共用。需要變數 chart。 #}
+  {% set tm = chart.time %}
+  <div class="paipan-head">
+    <p><b>{{ tm.year }}年　{{ tm.month }}月　{{ tm.day }}日　{{ tm.hour }}時</b>　旬空：{{ tm.xunkong|join('') }}　月建 {{ tm.month[1] }}　日辰 {{ tm.day[1] }}　<span class="hint">（{{ tm.jie }}後）</span></p>
+    {% if tm.near_jie %}<p class="flags-msg">起卦時間在交節前後約 1 小時內，月建可能有誤，請以萬年曆核對。</p>{% endif %}
+    <p class="gua-names">
+      <span class="gua-main">{{ chart.ben.name }}</span>
+      <span class="hint">{{ chart.palace.palace }}宮・{{ chart.palace.stage }}</span>
+      {% if chart.bian %}<span class="arrow">→</span><span class="gua-main">{{ chart.bian.name }}</span>
+      <span class="hint">{{ chart.bian_palace.palace }}宮・{{ chart.bian_palace.stage }}</span>{% else %}<span class="hint">　靜卦</span>{% endif %}
+    </p>
+    <p class="hint">互卦 {{ chart.hu.name }}　錯卦 {{ chart.cuo.name }}　綜卦 {{ chart.zong.name }}　卦身 {{ chart.gua_shen }}{% if not chart.gua_shen_present %}（不上卦）{% endif %}{% if chart.missing_liuqin %}　缺 {{ chart.missing_liuqin|join('、') }}（見伏神）{% endif %}</p>
+  </div>
+
+  <div class="table-wrap">
+  <table class="pan">
+    <thead><tr><th>六神</th><th>伏神</th><th>本卦</th><th></th><th>世應</th><th></th><th>變卦</th><th>月令</th><th>標記</th></tr></thead>
+    <tbody>
+    {% for ln in chart.lines|reverse %}
+      <tr class="{% if ln.moving %}moving{% endif %} {% if ln.shi %}is-shi{% endif %}">
+        <td>{{ ln.liushen }}</td>
+        <td class="fu qin">{% if ln.fu_liuqin %}{{ ln.fu_liuqin }}<b>{{ ln.fu_ganzhi[1] }}</b>{{ ln.fu_element }}{% endif %}</td>
+        <td class="qin">{{ ln.liuqin }}<b>{{ ln.branch }}</b>{{ ln.element }}</td>
+        <td class="yao-cell"><span class="yao {{ 'yang' if ln.yang else 'yin' }}"><i></i><i></i></span></td>
+        <td class="shiying">{% if ln.shi %}世{% elif ln.ying %}應{% endif %}</td>
+        <td class="dong">{% if ln.moving %}{{ '○' if ln.yang else '×' }}{% endif %}</td>
+        <td class="qin">{% if ln.moving %}{{ ln.change_liuqin }}<b>{{ ln.change_ganzhi[1] }}</b>{{ ln.change_element }}<small>{{ ln.change_relation }}</small>{% endif %}</td>
+        <td>{{ ln.month_state }}</td>
+        <td class="marks">{{ ln.marks|join('・') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>

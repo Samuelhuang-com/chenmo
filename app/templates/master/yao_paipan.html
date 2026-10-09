@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}排盤｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">案前</a><a href="/master/flags">封測名單</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+<section class="paper paipan" style="max-width:920px">
+  <p class="beta-badge">六龍問爻・排盤工具（封測）</p>
+  <h2>排盤</h2>
+  <form method="get" class="paipan-form">
+    <div class="yao-inputs">
+      {% set labels = ["初爻","二爻","三爻","四爻","五爻","上爻"] %}
+      {% for i in range(5, -1, -1) %}
+      <label><span>{{ labels[i] }}</span>
+        <select data-pos="{{ i }}">
+          {% for val, txt in [(7,"少陽 ⚊"),(8,"少陰 ⚋"),(9,"老陽 ○ 動"),(6,"老陰 × 動")] %}
+          <option value="{{ val }}" {% if values[i] == val %}selected{% endif %}>{{ txt }}</option>
+          {% endfor %}
+        </select></label>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="v" id="v" value="{{ values|join('') }}">
+    <div class="paipan-time">
+      <label>起卦時間（台北）<input type="datetime-local" name="t" value="{{ when }}"></label>
+      <label class="check"><input type="checkbox" name="zi" value="1" {% if zi %}checked{% endif %}> 23:00 起算隔日（子初換日）</label>
+      <button class="btn btn-zhu" type="submit">排盤</button>
+    </div>
+  </form>
+  {% if error %}<p class="flags-msg">{{ error }}</p>{% endif %}
+
+  {% if chart %}
+  {% include "master/_yao_chart.html" %}
+  <p class="hint">系統只標事實（旺衰、空破、回頭生剋），用神與吉凶由老師判斷。若和你的排法不同，請把這組爻與時間記下來告訴我。</p>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  (() => {
+    const sel = [...document.querySelectorAll(".yao-inputs select")];
+    const v = document.getElementById("v");
+    const sync = () => { const a = Array(6); sel.forEach(s => a[+s.dataset.pos] = s.value); v.value = a.join(""); };
+    sel.forEach(s => s.addEventListener("change", sync)); sync();
+  })();
+</script>
+{% endblock %}

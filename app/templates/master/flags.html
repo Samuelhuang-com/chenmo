@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}封測名單｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">案前</a><a href="/master/yao/paipan">排盤</a><a href="/master/history">已解紀錄</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+{% for it in items %}
+<section class="paper flags" style="max-width:720px">
+  <h2>{{ it.label }} <small class="hint">（{{ it.name }}）</small></h2>
+  {% if msg %}<p class="flags-msg">{{ msg }}</p>{% endif %}
+
+  {% if it.flag.enabled_for_all or it.env_all %}
+    <p><b class="state-on">已正式開放</b>：所有人都看得到{% if it.env_all %}（由環境變數 FEATURE_{{ it.name|upper }}_ALL 開啟）{% endif %}。</p>
+  {% else %}
+    <p><b class="state-beta">封測中</b>：只有老師與下列 Email（用 Google 登入後）看得到，其他人看到的網站和現在一樣。</p>
+  {% endif %}
+
+  <h3>封測名單</h3>
+  <ul class="flags-list">
+    {% for e in it.flag.allow_emails %}
+    <li><span>{{ e }}</span>
+      <form method="post" action="/master/flags/{{ it.name }}/remove">
+        <input type="hidden" name="email" value="{{ e }}">
+        <button class="btn btn-danger btn-sm" type="submit">移除</button>
+      </form></li>
+    {% endfor %}
+    {% for e in it.env_emails %}
+    <li><span>{{ e }}</span><span class="hint">環境變數設定，需改部署設定</span></li>
+    {% endfor %}
+    {% if not it.flag.allow_emails and not it.env_emails %}<li class="hint">目前沒有人，只有老師看得到。</li>{% endif %}
+  </ul>
+
+  <form method="post" action="/master/flags/{{ it.name }}/emails" class="flags-add">
+    <input type="text" name="emails" placeholder="輸入 Email，多個用逗號分隔" autocomplete="off" required>
+    <button class="btn" type="submit">加入</button>
+  </form>
+  <p class="hint">名單內的人必須用該 Google 帳號登入（右上角「登入」），才會看到入口。變更最多 60 秒內生效。</p>
+
+  {% if not it.env_all %}
+  <form method="post" action="/master/flags/{{ it.name }}/all" style="margin-top:24px">
+    {% if it.flag.enabled_for_all %}
+      <input type="hidden" name="on" value="0"><button class="btn" type="submit">改回封測</button>
+    {% else %}
+      <input type="hidden" name="on" value="1"><button class="btn btn-zhu" type="submit">正式開放給所有人</button>
+    {% endif %}
+  </form>
+  {% endif %}
+  {% if it.flag.updated_at %}<p class="hint">最後更新：{{ it.flag.updated_at|fmt_ms }}　{{ it.flag.updated_by }}</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}

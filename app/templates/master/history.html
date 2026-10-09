@@ -17,10 +17,12 @@
   <ol class="h-list">
     {% for c in cases %}
     <li>
-      <a class="h-item" href="/master/case/{{ c.id }}">
-        <span class="t-char grid-paper">{{ c.char or c.draft_char }}</span>
+      {% if c.kind == "yao" %}<a class="h-item" href="/master/yao/case/{{ c.id }}">
+        <span class="t-char t-gua-name">爻</span>{% else %}<a class="h-item" href="/master/case/{{ c.id }}">
+        <span class="t-char grid-paper">{{ c.char or c.draft_char }}</span>{% endif %}
         <span class="h-body">
           <span class="h-q">{{ c.question or "（未填寫問題）" }}{% if c.char_source == "picked" %}<span class="tag-pick">自選</span>{% endif %}</span>
+          {% if c.kind == "yao" %}<span class="h-meta">{{ c.gua }}</span>{% endif %}
           <span class="h-a">{{ c.answer[:90] }}{% if c.answer|length > 90 %}……{% endif %}</span>
           <span class="h-meta">{% if c.profile_text %}{{ c.profile_text }}，{% endif %}解於 {{ c.answered_at | fmt_ms }}{% if c.revision > 1 %}，曾收回重送，共送出 {{ c.revision }} 次{% endif %}</span>
         </span>

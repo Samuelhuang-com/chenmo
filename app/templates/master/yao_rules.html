@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}斷卦規則庫｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">案前</a><a href="/master/yao/paipan">排盤</a><a href="/master/flags">封測名單</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+<div class="yao-bench">
+  <section class="paper">
+    <p class="beta-badge">六龍問爻</p>
+    <h2>斷卦規則庫</h2>
+    <p class="hint">這是你自己的斷卦心法。AI 解卦草稿只能引用這裡「啟用」的規則與《周易》經文。一開始放了幾條六爻通行原則當起點，可以改成你自己的說法。</p>
+    {% if msg %}<p class="flags-msg">{{ msg }}</p>{% endif %}
+    <ol class="rule-list">
+      {% for r in rules %}
+      <li class="{{ '' if r.active else 'off' }}">
+        <form method="post" action="/master/yao/rules" class="rule-form">
+          <input type="hidden" name="id" value="{{ r.id }}">
+          <input type="text" name="title" value="{{ r.title }}" maxlength="40" aria-label="規則標題">
+          <textarea name="text" rows="2" maxlength="1000" aria-label="規則內容">{{ r.text }}</textarea>
+          <div class="rule-tools">
+            <label><input type="checkbox" name="active" value="1" {% if r.active %}checked{% endif %}> 啟用</label>
+            <button class="btn btn-sm" type="submit">儲存</button>
+            <button class="btn btn-sm btn-danger" type="submit" formaction="/master/yao/rules/{{ r.id }}/delete" onclick="return confirm('刪除這條規則？')">刪除</button>
+          </div>
+        </form>
+      </li>
+      {% endfor %}
+    </ol>
+    <h3 class="sub-h">新增規則</h3>
+    <form method="post" action="/master/yao/rules" class="rule-form">
+      <input type="text" name="title" maxlength="40" placeholder="標題，例如：問考試">
+      <textarea name="text" rows="2" maxlength="1000" placeholder="內容，例如：問考試以父母爻為文書，官鬼為功名，兩者旺相有氣為佳。"></textarea>
+      <input type="hidden" name="active" value="1">
+      <div class="rule-tools"><button class="btn btn-zhu btn-sm" type="submit">新增</button></div>
+    </form>
+  </section>
+
+  <section class="paper">
+    <h2>卦例</h2>
+    <p class="hint">已解的問爻，以及你事後記下的結果。常常「未應驗」的同一類判斷，就是該回頭調整的規則。</p>
+    <p class="vf-filter">
+      <a href="?" class="{{ 'on' if not v }}">全部</a>
+      {% for k in verify %}<a href="?v={{ k }}" class="{{ 'on' if v == k }}">{{ k }}{% if counts[k] %}（{{ counts[k] }}）{% endif %}</a>{% endfor %}
+      <a href="?v=none" class="{{ 'on' if v == 'none' }}">尚未記錄</a>
+    </p>
+    {% if cases %}
+    <div class="table-wrap"><table class="pan">
+      <thead><tr><th>解卦日</th><th>問題</th><th>卦</th><th>用神</th><th>結果</th><th>備註</th></tr></thead>
+      <tbody>
+      {% for c in cases %}
+      <tr><td>{{ c.answered_at | fmt_ms }}</td>
+        <td class="wrap"><a href="/master/yao/case/{{ c.id }}">{{ c.question }}</a>{% if c.category %} <span class="hint">{{ c.category }}</span>{% endif %}</td>
+        <td>{{ c.gua }}</td><td>{{ c.yongshen.liuqin or c.yongshen.special or "系統建議" }}</td>
+        <td>{{ c.verify_status or "—" }}</td><td class="wrap">{{ c.verify_note }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="hint">還沒有符合的卦例。</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

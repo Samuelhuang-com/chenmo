@@ -83,6 +83,25 @@ async def generate_ex(context: str) -> tuple[dict | None, str]:
     return None, reason
 
 
+async def ping() -> tuple[bool, str]:
+    """測試 AI 連線：送一個極小的請求，回報成功或失敗原因（給老師的「系統狀態」頁用）。"""
+    s = get_settings()
+    if not s.anthropic_api_key:
+        return False, "尚未設定 ANTHROPIC_API_KEY（雲端要設在 Secret Manager，並重新部署）"
+    try:
+        from anthropic import AsyncAnthropic
+    except Exception:  # noqa: BLE001
+        return False, "伺服器沒有安裝 anthropic 套件"
+    try:
+        client = AsyncAnthropic(api_key=s.anthropic_api_key, max_retries=0, timeout=30)
+        msg = await client.messages.create(model=s.anthropic_model, max_tokens=16,
+                                           messages=[{"role": "user", "content": "只回答：好"}])
+        text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
+        return True, f"連線正常（模型 {s.anthropic_model}，回覆：{text[:20]}）"
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}：{str(e)[:200]}"
+
+
 async def generate(context: str) -> dict | None:
     data, _ = await generate_ex(context)
     return data

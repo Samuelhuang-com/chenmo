@@ -11,7 +11,30 @@ function fmt(ms) {
   return d.toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function miniGua(values) {
+  // 六爻小圖：上爻在上；未擲的爻留空
+  const rows = [];
+  for (let i = 5; i >= 0; i--) {
+    const v = values[i];
+    rows.push(v === undefined ? '<i class="mg empty"></i>'
+      : `<i class="mg ${v === 7 || v === 9 ? "yang" : "yin"}${v === 6 || v === 9 ? " moving" : ""}"></i>`);
+  }
+  return rows.join("");
+}
+
+function yaoTicket(c) {
+  const n = (c.yao_values || []).length;
+  const isLive = c.status === "drafting" && Date.now() - (live.get(c.id) || 0) < 60000;
+  const time = c.status === "answered" ? c.answered_at : c.status === "submitted" ? c.submitted_at : c.updated_at;
+  const state = c.status === "drafting" ? `擲錢 ${n}/6` : esc(c.gua);
+  return `<a class="ticket ticket-yao${isLive ? " live" : ""}" href="/master/yao/case/${c.id}">
+    <div class="t-char t-gua" aria-hidden="true">${miniGua(c.yao_values || [])}</div>
+    <div><p class="t-q"><span class="tag-yao">爻</span>${esc(c.question) || "（尚未填寫問題）"}</p>
+    <div class="t-meta">${c.nickname ? "<b>" + esc(c.nickname) + "</b>　" : ""}${state}，${fmt(time)}</div></div></a>`;
+}
+
 function ticket(c) {
+  if (c.kind === "yao") return yaoTicket(c);
   const isLive = c.status === "drafting" && Date.now() - (live.get(c.id) || 0) < 15000;
   const time = c.status === "answered" ? c.answered_at : c.status === "submitted" ? c.submitted_at : c.updated_at;
   return `<a class="ticket${isLive ? " live" : ""}" href="/master/case/${c.id}">
@@ -44,6 +67,7 @@ async function reload() {
 }
 
 function upsert(c) {
+  if (c.kind === "yao" && c.status === "drafting") live.set(c.id, Date.now());
   const i = cases.findIndex(x => x.id === c.id);
   if (i >= 0) cases[i] = c; else cases.unshift(c);
   if (c.status === "answered") cases.sort((a, b) => (b.answered_at || 0) - (a.answered_at || 0));
