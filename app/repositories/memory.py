@@ -39,6 +39,15 @@ class MemoryCaseRepository:
             self._cases[case_id] = updated
             return updated.model_copy()
 
+    async def transition(self, case_id: str, expect: CaseStatus, **fields: Any) -> Case | None:
+        async with self._lock:
+            c = self._cases.get(case_id)
+            if not c or c.status != expect:
+                return None
+            updated = c.model_copy(update={**fields, "updated_at": now_ms()})
+            self._cases[case_id] = updated
+            return updated.model_copy()
+
     async def delete(self, case_id: str) -> bool:
         async with self._lock:
             c = self._cases.pop(case_id, None)

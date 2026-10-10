@@ -15,7 +15,7 @@ from app.services.sections import public_reading
 from app.services.jiezi import compose
 from app.repositories import get_repo
 from app.services.realtime import hub
-from app.templating import templates
+from app.templating import fmt_ms, templates
 
 router = APIRouter()
 
@@ -220,6 +220,12 @@ async def api_ai_check(master: dict = Depends(require_master_api)):
     return {"ok": ok, "message": msg}
 
 
+def _already_sent_msg(case) -> str:
+    when = fmt_ms(case.answered_at)
+    return (f"此字已於 {when} 送出（第 {case.revision} 次），不會重複送出。"
+            "要修改請按「更新解讀」，或先「收回」再重送。")
+
+
 @router.post("/api/master/cases/{case_id}/answer")
 async def api_answer(case_id: str, body: AnswerIn, request: Request, master: dict = Depends(require_master_api)):
     """送出（或重送）解字。問事者只會收到【解讀】段落，其餘段落留在老師的解字稿。"""
@@ -230,14 +236,23 @@ async def api_answer(case_id: str, body: AnswerIn, request: Request, master: dic
     if case.status == CaseStatus.drafting:
         raise HTTPException(409, "問事者尚未送出")
     if case.status == CaseStatus.answered:
-        raise HTTPException(409, "此字已送出，請先收回再重送")
+        raise HTTPException(409, _already_sent_msg(case))
     reading, html_ = _reading_of(body)
     if not reading:
         raise HTTPException(422, "【解讀】段落是空的。問事者只會收到【解讀】，請先寫好這一段。")
-    case = await repo.update(case_id, notes=body.body.strip(), answer=reading, answer_html=html_,
-                             reading_draft=html_,
-                             status=CaseStatus.answered, answered_at=now_ms(),
-                             answered_by=master.get("email", ""), revision=case.revision + 1)
+    # 原子比對：只有「狀態仍是待解」才寫入。同時兩個請求（連點、兩個分頁、逾時重試）只會有一個成功，
+    # 失敗的那個不會寫入、不會通知問事者、也不會寄信。
+    updated = await repo.transition(case_id, CaseStatus.submitted,
+                                    notes=body.body.strip(), answer=reading, answer_html=html_,
+                                    reading_draft=html_,
+                                    status=CaseStatus.answered, answered_at=now_ms(),
+                                    answered_by=master.get("email", ""), revision=case.revision + 1)
+    if updated is None:
+        latest = await repo.get(case_id)
+        if latest and latest.status == CaseStatus.answered:
+            raise HTTPException(409, _already_sent_msg(latest))
+        raise HTTPException(409, "此字的狀態剛剛變動了，請重新整理頁面確認後再送出")
+    case = updated
     await hub.to_user(case.token, {"type": "answer_ready"})
     await hub.to_masters({"type": "case_update", "case": case.model_dump(mode="json")})
     emailed, email_note = None, ""

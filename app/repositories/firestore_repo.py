@@ -45,6 +45,23 @@ class FirestoreCaseRepository:
             return None
         return await self.get(case_id)
 
+    async def transition(self, case_id: str, expect: CaseStatus, **fields: Any) -> Case | None:
+        """Firestore transaction：讀到的狀態仍是 expect 才寫入，多個 Cloud Run 實例同時送也只會成功一次。"""
+        ref = self.col.document(case_id)
+        data = {k: (v.value if hasattr(v, "value") else v) for k, v in fields.items()}
+        data["updated_at"] = now_ms()
+
+        @firestore.async_transactional
+        async def _run(tx) -> bool:
+            snap = await ref.get(transaction=tx)
+            if not snap.exists or snap.to_dict().get("status") != expect.value:
+                return False
+            tx.update(ref, data)
+            return True
+
+        ok = await _run(self.db.transaction())
+        return await self.get(case_id) if ok else None
+
     async def list_cases(self, limit: int = 100, status: CaseStatus | None = None,
                          offset: int = 0) -> list[Case]:
         # status + 排序需要複合索引，deploy/gcp_setup.sh 會建立

@@ -77,6 +77,16 @@ class SqliteCaseRepository:
             self._save(c)
             return c
 
+    async def transition(self, case_id: str, expect: CaseStatus, **fields: Any) -> Case | None:
+        async with self.lock:
+            c = await self.get(case_id)
+            if not c or c.status != expect:
+                return None
+            c = c.model_copy(update={**fields, "updated_at": now_ms()})
+            c = Case.model_validate(c.model_dump())
+            self._save(c)
+            return c
+
     async def list_cases(self, limit: int = 100, status: CaseStatus | None = None,
                          offset: int = 0) -> list[Case]:
         if status == CaseStatus.answered:

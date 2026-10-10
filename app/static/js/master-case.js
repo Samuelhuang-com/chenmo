@@ -296,13 +296,16 @@ function errText(d, fallback) {
 }
 
 // ---- 送出／重送 ----
+let sending = false;
 $("send").onclick = async () => {
+  if (sending || caseStatus === "answered") return;   // 送出中或已送出：不得再送
   $("error").textContent = "";
   if (!publicReading()) {
     $("error").textContent = "【解讀】是空的。問事者只會收到【解讀】，請先寫好這一段。";
     return;
   }
   const body = combined();
+  sending = true;
   $("send").disabled = true;
   clearTimeout(saveTimer);
   try {
@@ -310,7 +313,7 @@ $("send").onclick = async () => {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, reading_html: readingHtml(), email_student: !!$("email-student")?.checked }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(errText(d, "送出失敗"));
+    if (!r.ok) { const er = new Error(errText(d, "送出失敗")); er.status = r.status; throw er; }
     revision = d.revision;
     setStatus("answered", { revision: d.revision, answered_at: Date.now() });
     let note = "已送出，問事者頁面已更新。之後還可以直接修改並按「更新解讀」。";
@@ -319,7 +322,15 @@ $("send").onclick = async () => {
     $("save-state").textContent = note;
   } catch (e) {
     $("error").textContent = e.message;
-    $("send").disabled = caseStatus !== "submitted";
+    // 不管是 409（伺服器說已送出）或網路逾時（不確定有沒有送出），都先向伺服器確認真實狀態再決定按鈕
+    try { await load(); } catch (_) { /* 連不上就維持鎖定，避免重複送出 */ $("send").disabled = true; }
+    if (caseStatus === "answered" && e.status !== 409) {
+      $("error").textContent = "網路回應逾時，但伺服器已收到並送出，請勿再按送出。";
+    } else if (caseStatus !== "answered" && !e.status) {
+      $("error").textContent = e.message + "（已向伺服器確認：尚未送出，可以再按一次）";
+    }
+  } finally {
+    sending = false;
   }
 };
 

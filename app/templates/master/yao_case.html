@@ -197,9 +197,22 @@
     err("");
     if (!text().trim()) return err("解卦內容是空的。");
     $("send").disabled = true;
-    const r = await api(`/api/master/cases/${caseId}/answer`, "POST",
-      { body: text(), reading_html: toHtml(text()), email_student: !!$("email-student")?.checked });
-    if (!r.ok) { $("send").disabled = false; return err(await detail(r)); }
+    let r;
+    try {
+      r = await api(`/api/master/cases/${caseId}/answer`, "POST",
+        { body: text(), reading_html: toHtml(text()), email_student: !!$("email-student")?.checked });
+    } catch (_) {
+      // 網路中斷：不確定伺服器有沒有收到，重新載入頁面看真實狀態，不要讓使用者直接重按
+      err("網路中斷，正在向伺服器確認是否已送出…");
+      return setTimeout(() => location.reload(), 1500);
+    }
+    if (!r.ok) {
+      const m = await detail(r);
+      err(m);
+      if (r.status === 409) return setTimeout(() => location.reload(), 2500);   // 已送出：同步成已送出畫面
+      $("send").disabled = false;
+      return;
+    }
     location.reload();
   });
   $("update")?.addEventListener("click", async () => {
