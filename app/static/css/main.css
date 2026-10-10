@@ -390,8 +390,15 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .rte-bar button:active { background: rgba(0,0,0,.16); }
 .rte-bar select { border: 1px solid #d8cdb4; background: #fff; font-size: .9rem; min-width: 76px; padding: 0 6px; }
 .rte-bar .sep { width: 1px; height: 22px; background: #d8cdb4; margin: 0 6px; }
-.rte-bar .color-btn { position: relative; overflow: hidden; }
-.rte-bar .color-btn input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.swatch-wrap { position: relative; display: inline-flex; }
+.rte-bar .sw-trigger:hover { background: rgba(0,0,0,.08); }
+.sw-pop { position: absolute; top: 40px; left: 0; z-index: 20; display: flex; gap: 6px; padding: 8px;
+  background: #fff; border: 1px solid #d8cdb4; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+.sw-pop[hidden] { display: none; }
+.rte-bar .sw-pop .sw { min-width: 26px; width: 26px; height: 26px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.25); font-size: .8rem; color: #666; }
+.rte-bar .sw-pop .sw:hover { transform: scale(1.12); }
+.rte-bar .sw-pop .sw-none { background: #fff; }
 .c-a { font-weight: 700; font-size: 1.05rem; border-bottom: 3px solid var(--zhu); line-height: 1; padding: 0 2px 1px; }
 .c-h { display: inline-flex; color: #e0b800; }
 .rte-body { min-height: 280px; padding: 16px 18px; outline: none; font-size: var(--step-0); line-height: 1.9; white-space: normal;

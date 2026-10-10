@@ -407,8 +407,6 @@ $("rte-bar").addEventListener("click", e => {
   const b = e.target.closest("button[data-cmd]");
   if (b) exec(b.dataset.cmd);
 });
-$("rte-color").addEventListener("input", e => exec("foreColor", e.target.value));
-$("rte-hilite").addEventListener("input", e => exec("hiliteColor", e.target.value));
 $("rte-size").addEventListener("change", e => {
   const px = e.target.value; e.target.value = "";
   if (!px) return;

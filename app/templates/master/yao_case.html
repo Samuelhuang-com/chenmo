@@ -92,8 +92,7 @@
         <button type="button" data-cmd="italic" title="斜體" aria-label="斜體"><i>I</i></button>
         <button type="button" data-cmd="underline" title="底線" aria-label="底線"><u>U</u></button>
         <button type="button" data-cmd="strikeThrough" title="刪除線" aria-label="刪除線"><s>S</s></button>
-        <label class="color-btn" title="文字顏色"><span class="c-a">A</span><input type="color" id="rte-color" value="#b3261e" aria-label="文字顏色"></label>
-        <label class="color-btn" title="螢光筆"><span class="c-h"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="m4 20 4-1 11-11-3-3L5 16l-1 4Z"/><path d="M3 22h18v-2H3z" opacity=".5"/></svg></span><input type="color" id="rte-hilite" value="#fff3a3" aria-label="螢光筆顏色"></label>
+        {% include "master/_rte_colors.html" %}
         <span class="sep"></span>
         <button type="button" data-cmd="justifyLeft" title="靠左" aria-label="靠左"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></svg></button>
         <button type="button" data-cmd="justifyCenter" title="置中" aria-label="置中"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></svg></button>
@@ -168,6 +167,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script defer src="/static/js/rte-swatch.js?v={{ asset_v }}"></script>
 <script type="module">
   import { Socket } from "/static/js/ws-client.js";
   const $ = (id) => document.getElementById(id);
@@ -271,8 +271,6 @@
   function exec(cmd, val = null) { restoreSel(); document.execCommand(cmd, false, val); changed(); }
   $("rte-bar").addEventListener("mousedown", e => { if (!e.target.closest("select, input")) e.preventDefault(); });
   $("rte-bar").addEventListener("click", e => { const b = e.target.closest("button[data-cmd]"); if (b) exec(b.dataset.cmd); });
-  $("rte-color").addEventListener("input", e => exec("foreColor", e.target.value));
-  $("rte-hilite").addEventListener("input", e => exec("hiliteColor", e.target.value));
   $("rte-size").addEventListener("change", e => {
     const px = e.target.value; e.target.value = "";
     if (!px) return;
