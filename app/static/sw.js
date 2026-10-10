@@ -6,6 +6,11 @@ const VERSION = "__VERSION__";
 const CACHE = `chenmo-${VERSION}`;
 const PRECACHE = ["/offline", "/static/css/main.css"];
 
+// 含個人資料的頁面（問事者結果、我的問字、老師端、帶追問／重寫參數的問字頁）：絕不放進快取。
+// 規則要和伺服器 app/main.py 的 is_private_path 保持一致。
+const isPrivate = (u) =>
+  /^\/(c\/|me(\/|$)|master)/.test(u.pathname) || (/^\/(ask|yao)$/.test(u.pathname) && /(^|[?&])(follow|redo)=/.test(u.search));
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
@@ -14,6 +19,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k.startsWith("chenmo-") && k !== CACHE).map((k) => caches.delete(k))))
+      // 清掉先前版本可能已存進快取的個人頁面
+      .then(() => caches.open(CACHE))
+      .then((c) => c.keys().then((reqs) => Promise.all(reqs.filter((r) => isPrivate(new URL(r.url))).map((r) => c.delete(r)))))
       .then(() => self.clients.claim())
   );
 });
@@ -28,10 +36,14 @@ self.addEventListener("fetch", (event) => {
   if (NEVER.some((p) => url.pathname.startsWith(p))) return;
 
   if (req.mode === "navigate") {
+    if (isPrivate(url)) {   // 個人頁面：只走網路；離線時顯示離線頁，不留任何內容在裝置上
+      event.respondWith(fetch(req).catch(() => caches.match("/offline")));
+      return;
+    }
     event.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok && !url.pathname.startsWith("/master")) {
+          if (res.ok) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));
           }

@@ -608,3 +608,15 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .pill-btn:hover { border-color: var(--zhu); color: var(--zhu); background: rgba(178,58,46,.06); }
 .pill-btn:active { background: rgba(178,58,46,.14); }
 .pill-btn:focus-visible { outline: 2px solid var(--zhu); outline-offset: 2px; }
+
+/* 送出前確認框（老師端） */
+.confirm-dialog { max-width: min(520px, 92vw); border: 1px solid #b9ab8f; border-radius: 10px; padding: 20px 22px;
+  background: #fffdf8; color: var(--mo); box-shadow: 0 12px 40px rgba(0,0,0,.28); }
+.confirm-dialog::backdrop { background: rgba(29,34,36,.55); }
+.confirm-dialog h3 { margin: 0 0 12px; font-size: 1.15rem; letter-spacing: .08em; }
+.cs-list { display: grid; grid-template-columns: 6.5em 1fr; gap: 6px 12px; margin: 0 0 12px; font-size: .95rem; }
+.cs-list dt { color: var(--mo-soft); }
+.cs-list dd { margin: 0; overflow-wrap: anywhere; }
+.cs-warn { margin: 0 0 10px; padding: 8px 10px; border-left: 3px solid var(--zhu); background: rgba(178,58,46,.08); color: var(--zhu-deep); font-size: .92rem; }
+.cs-check { display: block; margin: 8px 0; cursor: pointer; }
+.cs-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }

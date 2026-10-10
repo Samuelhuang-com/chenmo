@@ -148,6 +148,12 @@ def build_student_message(case: Case, link: str) -> EmailMessage:
     return msg
 
 
+def mask_email(addr: str) -> str:
+    """日誌用：a***@example.com，避免把問事者完整信箱寫進雲端日誌。"""
+    name, _, domain = (addr or "").partition("@")
+    return f"{name[:1]}***@{domain}" if domain else "***"
+
+
 async def notify_student_answered(case: Case, base_url: str) -> tuple[bool, str]:
     """寄信給有登入的問事者（附問事者連結）。回傳（是否寄出, 沒寄出的原因）。"""
     s = get_settings()
@@ -158,8 +164,9 @@ async def notify_student_answered(case: Case, base_url: str) -> tuple[bool, str]
     link = f"{(s.site_url or base_url).rstrip('/')}/c/{case.token}"
     try:
         await asyncio.wait_for(asyncio.to_thread(_send, build_student_message(case, link)), timeout=10)
-        log.info("answer email sent to student %s", case.owner_email)
+        log.info("answer email sent to student %s", mask_email(case.owner_email))
         return True, ""
     except Exception as e:  # noqa: BLE001
-        log.exception("answer email to student failed")
+        # 不用 log.exception：寄信錯誤的訊息常帶有收件人完整信箱
+        log.warning("answer email to student %s failed: %s", mask_email(case.owner_email), type(e).__name__)
         return False, f"寄信失敗：{type(e).__name__}"

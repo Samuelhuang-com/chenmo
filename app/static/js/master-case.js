@@ -1,6 +1,7 @@
 import { Player, strokeDuration } from "./replay.js";
 import { visibleStrokes } from "./ink.js";
 import { Socket } from "./ws-client.js";
+import { confirmSend, trunc } from "./confirm-send.js";
 
 const $ = id => document.getElementById(id);
 let nickNow = "";
@@ -54,6 +55,7 @@ function refresh() {
 
 let caseStatus = "";
 let revision = 0;
+let currentCase = null;   // 伺服器最新的案件資料，送出前確認框用
 function setStatus(s, c = null) {
   const was = caseStatus;
   caseStatus = s;
@@ -132,6 +134,7 @@ async function load() {
   $("question").textContent = d.case.question || "（尚未填寫）";
   $("profile").textContent = profileLine(d.case);
   showPick(d.case);
+  currentCase = d.case;
   setStatus(d.case.status, d.case);
   player.load(events);
   renderFacts();
@@ -157,6 +160,7 @@ function showPick(c) {
 const liveStrokes = new Map();
 new Socket("/ws/master", msg => {
   if (msg.type === "case_update" && msg.case.id === caseId) {
+    currentCase = msg.case;
     if (msg.case.rewrite_requested_at) $("rewrite-state").textContent = "已請問事者重寫，等待新的字。";
     if (!$("jiezi-char").value && msg.case.char) $("jiezi-char").value = msg.case.char;
     if (msg.case.profile_text) $("profile").textContent = profileLine(msg.case);
@@ -292,11 +296,13 @@ renderReading();
 window.addEventListener("beforeunload", e => { if (dirtySent) { e.preventDefault(); e.returnValue = ""; } });
 
 function errText(d, fallback) {
+  if (d.detail && typeof d.detail === "object" && !Array.isArray(d.detail)) return d.detail.message || fallback;
   return Array.isArray(d.detail) ? d.detail.map(x => x.msg).join("；") : (d.detail || fallback);
 }
 
 // ---- 送出／重送 ----
 let sending = false;
+let ackMismatch = false;
 $("send").onclick = async () => {
   if (sending || caseStatus === "answered") return;   // 送出中或已送出：不得再送
   $("error").textContent = "";
@@ -309,8 +315,29 @@ $("send").onclick = async () => {
   $("send").disabled = true;
   clearTimeout(saveTimer);
   try {
+    // 送出前確認：讓老師再核對一次這份解讀是寫給誰；顯示的資料以伺服器最新狀態為準
+    if (!currentCase) await load();
+    const c = currentCase || {};
+    const asked = [...(c.char || "").trim()][0] || "";
+    const secChar = ($("answer").value.match(/^【此字】[ \t]*\r?\n\s*(\S)/mu) || [])[1] || "";
+    const mismatch = !!(asked && secChar && asked !== secChar);
+    const mailOn = !!$("email-student")?.checked && !!c.owner_email;
+    const go = await confirmSend({
+      rows: [
+        ["問事者", [c.nickname, c.profile_text].filter(Boolean).join("　")],
+        ["所寫的字", asked ? `「${asked}」${c.char_source === "picked" ? "（自選字）" : ""}` : "（未填）"],
+        ["解字稿的字", secChar ? `「${secChar}」` : "（【此字】沒有內容）"],
+        ["所問", trunc(c.question, 40)],
+        ["寄信", mailOn ? `寄給 ${c.owner_email}` : "不寄信（問事者要自己從連結查看）"],
+        ["解讀開頭", trunc(publicReading(), 40)],
+      ],
+      warning: mismatch ? `解字稿【此字】是「${secChar}」，但問事者所寫的是「${asked}」，請確認沒有貼錯。` : "",
+      okLabel: revision ? "確定重送" : "確定送出",
+    });
+    if (!go.ok) { sending = false; $("send").disabled = caseStatus !== "submitted"; return; }
+    ackMismatch = go.ackWarning;
     const r = await fetch(`/api/master/cases/${caseId}/answer`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, reading_html: readingHtml(), email_student: !!$("email-student")?.checked }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, reading_html: readingHtml(), email_student: !!$("email-student")?.checked, ack_char_mismatch: ackMismatch }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { const er = new Error(errText(d, "送出失敗")); er.status = r.status; throw er; }

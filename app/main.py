@@ -71,9 +71,22 @@ async def _http_error(request: Request, exc: StarletteHTTPException):
                                       status_code=exc.status_code)
 
 
+def is_private_path(path: str, query: str = "") -> bool:
+    """含個人資料的頁面：問事者結果頁、我的問字、老師端、API、帶追問／重寫參數的問字頁。
+    這些頁面不可被瀏覽器或中間層快取，也不該被搜尋引擎收錄。（static/sw.js 的 isPrivate 規則要保持一致）"""
+    if path.startswith(("/c/", "/master", "/api/", "/ws/")) or path == "/me" or path.startswith("/me/"):
+        return True
+    from urllib.parse import parse_qs
+    q = parse_qs(query, keep_blank_values=True)
+    return path in ("/ask", "/yao") and ("follow" in q or "redo" in q)
+
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     resp = await call_next(request)
+    if is_private_path(request.url.path, request.url.query):
+        resp.headers.setdefault("Cache-Control", "no-store")
+        resp.headers.setdefault("X-Robots-Tag", "noindex, noarchive")
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
     resp.headers.setdefault("X-Frame-Options", "DENY")

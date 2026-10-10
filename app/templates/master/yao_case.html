@@ -170,6 +170,7 @@
 <script defer src="/static/js/rte-swatch.js?v={{ asset_v }}"></script>
 <script type="module">
   import { Socket } from "/static/js/ws-client.js";
+  import { confirmSend, trunc } from "/static/js/confirm-send.js";
   const $ = (id) => document.getElementById(id);
   const bench = $("bench"), caseId = bench.dataset.caseId, status = bench.dataset.status;
   const err = (m) => { $("error").textContent = m || ""; };
@@ -197,6 +198,21 @@
     err("");
     if (!text().trim()) return err("解卦內容是空的。");
     $("send").disabled = true;
+    // 送出前確認：再核對一次這份解卦是寫給誰（資料取自伺服器渲染時的案件）
+    const info = {{ {"nick": case.nickname, "profile": case.profile_text, "gua": case.gua, "q": case.question,
+                     "mail": case.owner_email} | tojson }};
+    const mailOn = !!$("email-student")?.checked && !!info.mail;
+    const go = await confirmSend({
+      rows: [
+        ["問事者", [info.nick, info.profile].filter(Boolean).join("　")],
+        ["卦", info.gua],
+        ["所問", trunc(info.q, 40)],
+        ["寄信", mailOn ? `寄給 ${info.mail}` : "不寄信（問事者要自己從連結查看）"],
+        ["解卦開頭", trunc(text(), 40)],
+      ],
+      okLabel: {{ ("確定重送" if case.revision else "確定送出") | tojson }},
+    });
+    if (!go.ok) { $("send").disabled = false; return; }
     let r;
     try {
       r = await api(`/api/master/cases/${caseId}/answer`, "POST",

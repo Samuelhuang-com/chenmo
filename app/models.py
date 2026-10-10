@@ -182,6 +182,7 @@ class AnswerIn(BaseModel):
     body: str = Field(min_length=1, max_length=20000)   # 老師的完整解字稿
     reading_html: str | None = Field(default=None, max_length=40000)   # 【解讀】編輯器的 HTML
     email_student: bool = False          # 送出後是否寄信通知問事者（需問事者有登入）
+    ack_char_mismatch: bool = False      # 老師已確認：解字稿【此字】與問事者所寫的字不同，仍要送出
 
 
 class SponsorIn(BaseModel):

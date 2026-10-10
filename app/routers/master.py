@@ -11,7 +11,7 @@ from app.auth import SESSION_KEY, STUDENT_KEY, get_oauth, require_master_api, re
 from app.config import get_settings
 from app.models import AnswerIn, CaseStatus, JieziIn, NotesIn, RewriteIn, SponsorIn, now_ms
 from app.services.richtext import html_to_text, sanitize_html, text_to_html
-from app.services.sections import public_reading
+from app.services.sections import public_reading, split_sections
 from app.services.jiezi import compose
 from app.repositories import get_repo
 from app.services.realtime import hub
@@ -220,6 +220,18 @@ async def api_ai_check(master: dict = Depends(require_master_api)):
     return {"ok": ok, "message": msg}
 
 
+def _char_mismatch(case, text: str) -> tuple[str, str] | None:
+    """解字稿【此字】的第一個字，與問事者所寫的字不同時，回傳（所寫的字, 解字稿的字）。問爻案件不檢查。"""
+    if case.kind != "char":
+        return None
+    asked = next(iter((case.char or "").strip()), "")
+    head = split_sections(text).get("此字", "").strip()
+    section = next(iter(head), "")
+    if asked and section and asked != section:
+        return asked, section
+    return None
+
+
 def _already_sent_msg(case) -> str:
     when = fmt_ms(case.answered_at)
     return (f"此字已於 {when} 送出（第 {case.revision} 次），不會重複送出。"
@@ -240,6 +252,12 @@ async def api_answer(case_id: str, body: AnswerIn, request: Request, master: dic
     reading, html_ = _reading_of(body)
     if not reading:
         raise HTTPException(422, "【解讀】段落是空的。問事者只會收到【解讀】，請先寫好這一段。")
+    mm = None if body.ack_char_mismatch else _char_mismatch(case, body.body)
+    if mm:
+        raise HTTPException(409, {
+            "code": "char_mismatch", "asked": mm[0], "section": mm[1],
+            "message": f"解字稿【此字】是「{mm[1]}」，但問事者所寫的是「{mm[0]}」，請確認沒有貼錯。"
+                       "若確定無誤，請在送出確認框勾選後再送出。"})
     # 原子比對：只有「狀態仍是待解」才寫入。同時兩個請求（連點、兩個分頁、逾時重試）只會有一個成功，
     # 失敗的那個不會寫入、不會通知問事者、也不會寄信。
     updated = await repo.transition(case_id, CaseStatus.submitted,
