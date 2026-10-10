@@ -93,16 +93,17 @@ async def user_ws(ws: WebSocket, token: str):
                     out = {"type": "profile", "text": updated.profile_text, "nickname": updated.nickname}
 
             elif t == "pick":
-                from app.services.pick import valid_offer
+                from app.services.pick import theme_label, valid_offer
                 ch, offered = str(msg.get("char", "")), msg.get("offered") or []
                 if isinstance(offered, list) and valid_offer(offered) and ch in offered:
                     rounds = max(int(msg.get("rounds") or 1), 1)
+                    theme = theme_label(str(msg.get("theme", ""))[:32], str(msg.get("group", ""))[:48])
                     await repo.update(case.id, char=ch, char_source="picked", offered=offered,
-                                      pick_rounds=rounds)
-                    out = {"type": "pick", "char": ch, "offered": offered, "rounds": rounds}
+                                      pick_rounds=rounds, pick_theme=theme)
+                    out = {"type": "pick", "char": ch, "offered": offered, "rounds": rounds, "theme": theme}
 
             elif t == "unpick":
-                await repo.update(case.id, char="", char_source="", offered=[], pick_rounds=0)
+                await repo.update(case.id, char="", char_source="", offered=[], pick_rounds=0, pick_theme="")
                 out = {"type": "unpick"}
 
             elif t == "stroke_start":

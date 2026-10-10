@@ -74,17 +74,31 @@ const pad = new BrushPad($("pad"), {
   onClear: () => send({ type: "clear" }),
 });
 // ---- 自選字 ----
-let pick = null;            // { char, offered, rounds }
+let pick = null;            // { char, offered, rounds, theme, group }
 let offered = [], rounds = 0;
+let themeId = "", groupId = "";   // themeId 空＝隨機字（原本的做法）；選了方向才有主題字庫
 const panel = $("pick-panel"), grid = $("pick-grid"), charInput = $("char");
 const PAD_HINT = $("pad-hint").textContent;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-async function loadSet() {
+// 換一組（again）：同一方向、同一子題，並避開目前這組字；換方向或第一次載入則重新抽
+async function loadSet(again = false) {
   $("pick-shuffle").disabled = true;
   try {
-    const r = await fetch("/api/pick");
-    offered = (await r.json()).chars;
+    const qs = new URLSearchParams();
+    if (themeId) {
+      qs.set("theme", themeId);
+      if (again && groupId) qs.set("group", groupId);
+      if (again) qs.set("exclude", offered.join(""));
+    }
+    const r = await fetch("/api/pick" + (qs.toString() ? `?${qs}` : ""));
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    offered = d.chars;
+    groupId = d.group_id || "";
     rounds += 1;
+    renderCaption(d);
+    grid.classList.toggle("by-stage", d.source === "group");   // 子題：每列一個階段，由上而下是思考路徑
     grid.innerHTML = "";
     offered.forEach(ch => {
       const b = document.createElement("button");
@@ -92,19 +106,52 @@ async function loadSet() {
       b.onclick = () => choose(ch, b);
       grid.appendChild(b);
     });
+    $("pick-shuffle").hidden = !!themeId && d.can_redraw === false;   // 沒有不同組合就不假裝能換
   } catch { showErr("暫時無法取得候選字，請稍後再試。"); }
   finally { $("pick-shuffle").disabled = false; }
 }
+function renderCaption(d) {
+  const cap = $("pick-caption");
+  if (!themeId || !d.group_name) { cap.hidden = true; cap.textContent = ""; return; }
+  const path = d.source === "group" ? `　由上而下：${d.stages.map(s => s.name).join(" → ")}` : "";
+  cap.innerHTML = `<b>${esc(d.group_name)}</b>　${esc(d.tagline || "")}${path ? `<span class="pick-path">${esc(path.trim())}</span>` : ""}`;
+  cap.hidden = false;
+}
+// 挑字方向：選填。預設「隨機」，和原本一樣；第一次打開面板才載入清單，載入失敗就只剩隨機
+let themesLoaded = false;
+async function loadThemes() {
+  if (themesLoaded) return;
+  themesLoaded = true;
+  try {
+    const r = await fetch("/api/pick/themes");
+    const list = r.ok ? (await r.json()).themes : [];
+    if (!list.length) return;
+    const row = $("pick-themes");
+    [{ id: "", short: "隨機" }, ...list].forEach(t => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = t.short; b.dataset.id = t.id;
+      b.setAttribute("aria-pressed", String(t.id === themeId));
+      b.onclick = () => {
+        if (t.id === themeId) return;
+        themeId = t.id; groupId = "";
+        row.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+        loadSet(false);
+      };
+      row.appendChild(b);
+    });
+    row.hidden = false;
+  } catch { /* 沒有方向清單就維持隨機，不影響問字 */ }
+}
 function choose(ch, btn) {
   grid.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
-  pick = { char: ch, offered: [...offered], rounds };
+  pick = { char: ch, offered: [...offered], rounds, theme: themeId, group: groupId };
   $("pad-guide").textContent = ch;
   charInput.value = ch; charInput.readOnly = true;
-  $("pad-hint").innerHTML = `已選「<b>${ch}</b>」。可以照著淡字描寫一次（選填），也可以直接呈送。`;
+  $("pad-hint").innerHTML = `已選「<b>${esc(ch)}</b>」。可以照著淡字描寫一次（選填），也可以直接呈送。`;
   $("pad-hint").classList.add("picked-note");
   $("pick-open").textContent = "改選其他字";
   showErr("");
-  send({ type: "pick", char: ch, offered: pick.offered, rounds });
+  send({ type: "pick", char: ch, offered: pick.offered, rounds, theme: themeId, group: groupId });
 }
 function unpick() {
   if (pick) send({ type: "unpick" });
@@ -118,10 +165,11 @@ function unpick() {
 $("pick-open").onclick = () => {
   panel.hidden = false;
   $("pick-open").setAttribute("aria-expanded", "true");
+  loadThemes();
   if (!offered.length) loadSet();
   panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 };
-$("pick-shuffle").onclick = loadSet;
+$("pick-shuffle").onclick = () => loadSet(true);
 $("pick-close").onclick = () => {
   unpick();
   panel.hidden = true;
@@ -187,7 +235,7 @@ $("submit").onclick = async () => {
     const r = await fetch(`/api/cases/${token}/submit`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pick
-        ? { question, char: pick.char, birth_year: by, gender: g, nickname: nn, picked: true, offered: pick.offered, rounds: pick.rounds }
+        ? { question, char: pick.char, birth_year: by, gender: g, nickname: nn, picked: true, offered: pick.offered, rounds: pick.rounds, theme: pick.theme, group: pick.group }
         : { question, char: ch, birth_year: by, gender: g, nickname: nn }),
     });
     const d = await r.json().catch(() => ({}));

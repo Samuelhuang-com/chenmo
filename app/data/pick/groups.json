@@ -1,0 +1,53 @@
+{
+  "version": "1.1",
+  "groups": [
+    {
+      "id": "life_breakthrough",
+      "theme_id": "life",
+      "name": "突破困境",
+      "tagline": "心有方向，步履自有力量。",
+      "summary": "面對阻礙，從理解到行動，再走向成長",
+      "prompt": "你現在最想跨越什麼困難？",
+      "sample_size": 20,
+      "stages": [
+        {"name": "看見困境", "hint": "先看清楚眼前的挑戰", "quota": 4, "characters": "難阻困關礙逆險滯"},
+        {"name": "重新思考", "hint": "停一下，理解自己與局勢", "quota": 4, "characters": "思省察悟觀知辨明"},
+        {"name": "做出選擇", "hint": "找出可以前進的方向", "quota": 4, "characters": "擇決轉變取捨選定"},
+        {"name": "實際行動", "hint": "帶著韌性往前走", "quota": 4, "characters": "行勇毅堅進恆勤闖"},
+        {"name": "成長結果", "hint": "走出新的可能", "quota": 4, "characters": "新開達成展升通越"}
+      ]
+    },
+    {
+      "id": "love_cherish",
+      "theme_id": "love",
+      "name": "珍惜關係",
+      "tagline": "相遇是緣，相知是用心。",
+      "summary": "從相遇到了解，建立信任，學會珍惜與相伴",
+      "prompt": "你最想珍惜的是哪一個人？",
+      "sample_size": 20,
+      "stages": [
+        {"name": "相遇", "hint": "緣分的起點", "quota": 4, "characters": "遇緣逢識見迎邀會"},
+        {"name": "了解", "hint": "願意聽，也願意懂", "quota": 4, "characters": "知解聽懂問察諒體"},
+        {"name": "信任", "hint": "真誠讓關係站得穩", "quota": 4, "characters": "信誠真實諾託賴忠"},
+        {"name": "珍惜", "hint": "感謝與在乎", "quota": 4, "characters": "惜恩念感謝敬護愛"},
+        {"name": "相伴", "hint": "一起走下去", "quota": 4, "characters": "伴守暖和陪共久聚"}
+      ]
+    },
+    {
+      "id": "mind_calm",
+      "theme_id": "mind",
+      "name": "找回平靜",
+      "tagline": "心靜下來，才能看見自己的路。",
+      "summary": "從覺察出發，放慢、整理，走向安定與清明",
+      "prompt": "你現在最想讓心裡安靜下來的是什麼？",
+      "sample_size": 20,
+      "stages": [
+        {"name": "覺察", "hint": "先留意此刻的自己", "quota": 4, "characters": "覺察觀省醒審見照"},
+        {"name": "放慢", "hint": "給自己一點空隙", "quota": 4, "characters": "緩息慢停歇止徐閒"},
+        {"name": "整理", "hint": "放下不需要的重量", "quota": 4, "characters": "理整淡捨放簡容寬"},
+        {"name": "安定", "hint": "把心穩穩放好", "quota": 4, "characters": "定安寧穩靜平守沉"},
+        {"name": "清明", "hint": "看得更清楚", "quota": 4, "characters": "清明慧悟澄朗透空"}
+      ]
+    }
+  ]
+}

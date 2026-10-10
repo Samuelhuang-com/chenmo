@@ -70,6 +70,8 @@ def build_message(case: Case, link: str) -> EmailMessage:
         f"此字：{char}（{source}，{case.stroke_count} 筆）",
     ]
     if case.char_source == "picked" and case.offered:
+        if case.pick_theme:
+            lines.append(f"挑字方向：{case.pick_theme}")
         lines.append(f"候選字：{'、'.join(case.offered)}")
     if case.follow_chain:
         lines.append("追問，前面已問過：" + "；".join(f"「{c['question']}」（{c['char']}）" for c in case.follow_chain))
@@ -81,6 +83,7 @@ def build_message(case: Case, link: str) -> EmailMessage:
         f"<td style='padding:4px 0'>{escape(v)}</td></tr>"
         for k, v in [("所問", case.question), ("問事者", who),
                      ("此字", f"{char}（{source}，{case.stroke_count} 筆）"),
+                     *([("挑字方向", case.pick_theme)] if case.char_source == "picked" and case.pick_theme else []),
                      *([("候選字", "、".join(case.offered))] if case.char_source == "picked" and case.offered else []),
                      ("呈送時間", fmt_ms(case.submitted_at))])
     msg.add_alternative(f"""\

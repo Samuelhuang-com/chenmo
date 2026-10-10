@@ -18,7 +18,8 @@ def pick_text(case: Case) -> str:
     if case.char_source != "picked":
         return ""
     rounds = f"換到第 {case.pick_rounds} 組才選定，" if case.pick_rounds > 1 else ""
-    return f"此字為學生自選：從系統隨機提供的 {len(case.offered)} 字中選出（{rounds}候選：{'、'.join(case.offered)}）。"
+    src = f"從「{case.pick_theme}」方向提供的" if case.pick_theme else "從系統隨機提供的"
+    return f"此字為學生自選：{src} {len(case.offered)} 字中選出（{rounds}候選：{'、'.join(case.offered)}）。"
 
 
 def _sec_char(i: CharInfo, f: StrokeFeatures, case: Case | None = None) -> str:

@@ -149,7 +149,8 @@ function showPick(c) {
   $("pick-info").hidden = !picked;
   if (picked) {
     const r = (c.pick_rounds || c.rounds) > 1 ? `，換到第 ${c.pick_rounds || c.rounds} 組才選定` : "";
-    $("pick-info").textContent = `自選字「${c.char}」${r}。候選：${(c.offered || []).join("、")}`;
+    const th = c.pick_theme ? `，方向「${c.pick_theme}」` : "";
+    $("pick-info").textContent = `自選字「${c.char}」${th}${r}。候選：${(c.offered || []).join("、")}`;
     if (!$("jiezi-char").value || $("jiezi-char").dataset.fromPick) {
       $("jiezi-char").value = c.char; $("jiezi-char").dataset.fromPick = "1";
     }
@@ -181,7 +182,7 @@ new Socket("/ws/master", msg => {
     case "undo": case "clear": events.push({ type: msg.type }); break;
     case "question": $("question").textContent = msg.text || "（尚未填寫）"; return;
     case "profile": $("profile").textContent = profileLine({ nickname: msg.nickname ?? nickNow, profile_text: msg.text }); return;
-    case "pick": showPick({ char_source: "picked", char: msg.char, offered: msg.offered, pick_rounds: msg.rounds }); return;
+    case "pick": showPick({ char_source: "picked", char: msg.char, offered: msg.offered, pick_rounds: msg.rounds, pick_theme: msg.theme }); return;
     case "unpick": showPick(null); return;
   }
   refresh();

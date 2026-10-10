@@ -32,6 +32,7 @@ class Case(BaseModel):
     char_source: str = ""                # written：自己寫／picked：自選字
     offered: list[str] = Field(default_factory=list)   # 自選字時，系統提供的那一組字
     pick_rounds: int = 0                 # 自選字時按了幾次「換一組」後才選定（第幾組）
+    pick_theme: str = ""                 # 自選字時學生選的挑字方向（如「突破困境」）；空＝隨機字
     owner_email: str = ""                # 問事者登入的 Google 信箱（未登入為空）
     owner_name: str = ""
     birth_year: int | None = None        # 年次（民國年）
@@ -121,6 +122,8 @@ class SubmitIn(BaseModel):
     picked: bool = False                 # 是否為自選字
     offered: list[str] = Field(default_factory=list)
     rounds: int = Field(default=1, ge=1, le=999)
+    theme: str = Field(default="", max_length=32)    # 自選字的挑字方向代號（選填；伺服器核對後才記錄）
+    group: str = Field(default="", max_length=48)
 
     @field_validator("birth_year")
     @classmethod

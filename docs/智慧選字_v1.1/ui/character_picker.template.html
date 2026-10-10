@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>辰墨軒｜選字靈感</title>
+<!--
+  辰墨軒｜智慧主題選字 UI 原型（v1.1）
+  - 單檔、無相依，直接用瀏覽器開啟即可操作。
+  - 資料為建置時內嵌的字庫快照（DATA）；正式站請把 API_BASE 設為 "/api/characters"，
+    就會改走後端 /pick（重抽以 exclude 傳入上一組字）。
+  - 「就寫這個字」會觸發 document 上的 CustomEvent "chenmo:character-chosen"，
+    detail = { char, source, theme_id, group_id, stage }，可接回既有的手寫／測字流程，
+    並記錄這個字是「自填」還是「系統建議」。
+-->
+<style>
+:root{
+  --bg:#f5f0e6; --card:#fffdf8; --tile:#fbf7ee; --ink:#1f1a14; --muted:#7a6f61;
+  --line:#ddd2bf; --accent:#a93226; --accent-ink:#fff; --shadow:0 1px 2px rgba(60,40,10,.06),0 8px 24px rgba(60,40,10,.06);
+  --kai:"Kaiti TC","BiauKai","DFKai-SB","標楷體","KaiTi","STKaiti","Noto Serif TC","Noto Serif CJK TC",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Noto Sans CJK TC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#16130f; --card:#1f1b16; --tile:#27221b; --ink:#efe7d8; --muted:#a29683;
+    --line:#3b342a; --accent:#d9594a; --accent-ink:#1a0f0d; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16130f; --card:#1f1b16; --tile:#27221b; --ink:#efe7d8; --muted:#a29683;
+  --line:#3b342a; --accent:#d9594a; --accent-ink:#1a0f0d; --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--sans);
+  padding:max(16px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom))}
+.wrap{max-width:520px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.brand{text-align:center;padding:20px 0 16px}
+.brand h1{margin:0;font:600 30px/1.2 var(--kai);letter-spacing:.5em;padding-left:.5em}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:14px;letter-spacing:.2em}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+@media (min-width:480px){.card{padding:20px}}
+.q{display:block;font-size:17px;font-weight:600;margin-bottom:10px}
+.row{display:flex;gap:10px}
+.row input{flex:1;min-width:0;height:52px;border:1px solid var(--line);border-radius:12px;background:var(--tile);
+  color:var(--ink);padding:0 14px;font:22px var(--kai)}
+.row input::placeholder{font:15px var(--sans);color:var(--muted)}
+.btn{min-height:52px;padding:0 20px;border-radius:12px;border:1px solid var(--line);background:var(--tile);font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:active{transform:scale(.98)}
+.status{margin:10px 0 0;font-size:14px;color:var(--muted)}
+.status:empty{display:none}
+.status b{font-family:var(--kai);font-size:18px;color:var(--ink)}
+
+.helper{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:14px;min-height:48px;
+  border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--accent);font-weight:600}
+.helper .arrow{transition:transform .2s}
+.helper[aria-expanded="true"] .arrow{transform:rotate(180deg)}
+
+#panel{margin-top:16px;border-top:1px solid var(--line);padding-top:16px}
+.lead{margin:0 0 12px;color:var(--muted);font-size:15px}
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.chip{min-height:52px;border:1px solid var(--line);border-radius:12px;background:var(--tile);font-weight:600;font-size:15px;padding:0 4px}
+.chip:hover{border-color:var(--accent)}
+.link{background:none;border:0;color:var(--accent);font-weight:600;min-height:44px;padding:0 4px;text-decoration:underline;text-underline-offset:4px}
+.center{display:block;margin:6px auto 0}
+
+.result-head{display:flex;align-items:center;justify-content:space-between}
+.result h2{margin:4px 0 0;font:600 26px/1.3 var(--kai);letter-spacing:.15em}
+.tagline{margin:2px 0 14px;color:var(--muted);font-size:14px}
+.stage{display:grid;grid-template-columns:4.9em minmax(0,1fr);gap:6px;align-items:center;margin-bottom:8px}
+.stage-name{position:relative;font-size:13px;color:var(--muted);padding-left:12px;line-height:1.3}
+.stage-name::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--accent)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.flat{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:8px}
+.tile{aspect-ratio:1/1;min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--tile);
+  font:28px/1 var(--kai);display:grid;place-items:center;animation:rise .35s both;animation-delay:calc(var(--i)*18ms)}
+.tile:hover{border-color:var(--accent)}
+.tile:active{transform:scale(.95)}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.actions{display:flex;justify-content:center;margin-top:12px}
+.note{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
+.hint{margin:10px 0 0;text-align:center;font-size:13.5px;color:var(--muted)}
+
+dialog{border:0;padding:0;background:transparent;color:var(--ink);width:100%;max-width:100%;margin:auto 0 0}
+dialog::backdrop{background:rgba(20,12,4,.45)}
+.sheet{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px max(24px,env(safe-area-inset-bottom));text-align:center;
+  max-width:520px;margin:0 auto;animation:up .25s both}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.sheet .big{font:96px/1.1 var(--kai)}
+.sheet .st{margin:2px 0 0;color:var(--muted);font-size:13px;letter-spacing:.15em}
+.sheet .mean{margin:10px 0 8px;font-size:18px}
+.kw{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.kw span{font-size:13px;padding:2px 12px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.sheet .btn{display:block;width:100%}
+.sheet .btn+.btn{margin-top:8px;border-color:transparent;background:transparent;color:var(--muted)}
+@media (min-width:600px){
+  dialog{margin:auto}
+  .sheet{border-radius:20px;width:420px}
+}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 18px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="brand">
+    <h1>辰墨軒</h1>
+    <p>一字一念，從心出發</p>
+  </header>
+
+  <section class="card" aria-labelledby="q-label">
+    <label class="q" id="q-label" for="mine">想寫什麼字？</label>
+    <div class="row">
+      <input id="mine" type="text" autocomplete="off" placeholder="直接輸入你想寫的字">
+      <button class="btn primary" id="confirm" type="button">確定</button>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+
+    <button class="helper" id="helper" type="button" aria-expanded="false" aria-controls="panel">
+      不知道寫什麼？給我一點靈感 <span class="arrow" aria-hidden="true">▾</span>
+    </button>
+
+    <div id="panel" hidden>
+      <div id="picker">
+        <p class="lead">選一個你現在比較想談的方向</p>
+        <div class="chips" id="chips"></div>
+        <button class="link center" id="randomBtn" type="button">或者，隨機給我一點靈感</button>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="result-head">
+          <button class="link" id="changeBtn" type="button">‹ 換個方向</button>
+        </div>
+        <div aria-live="polite">
+          <h2 id="gname"></h2>
+          <p class="tagline" id="tagline"></p>
+        </div>
+        <div id="grid"></div>
+        <div class="actions"><button class="btn" id="redrawBtn" type="button">換一組字</button></div>
+        <p class="hint" id="noRedraw" hidden>這個方向的字庫還在擴充，先從這 20 個字挑挑看。</p>
+        <p class="note">點一個字看看它的意思。字義僅作書寫與自我反思的參考。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="sheet" aria-labelledby="sc">
+  <div class="sheet">
+    <div class="big" id="sc"></div>
+    <p class="st" id="ss"></p>
+    <p class="mean" id="sm"></p>
+    <div class="kw" id="sk"></div>
+    <button class="btn primary" id="useBtn" type="button">就寫這個字</button>
+    <button class="btn" id="backBtn" type="button">再看看</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ===== 設定 ===== */
+const API_BASE = null;            // 正式站改成 "/api/characters"
+const DATA = /*__DATA__*/null;    // 建置時內嵌的字庫快照（API 模式可移除）
+
+/* ===== 工具 ===== */
+const $ = (id) => document.getElementById(id);
+const chars = (s) => Array.from(s || "");
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const store = { get(k){ try { return sessionStorage.getItem(k); } catch { return null; } }, set(k,v){ try { sessionStorage.setItem(k,v); } catch {} } };
+let toastTimer;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1800); }
+
+/* ===== 取得字組：本機（與 character_picker.py 相同規則）或 API ===== */
+function localPick(themeId, groupId, exclude) {
+  const t = DATA.themes.find((x) => x.id === themeId);
+  const ex = new Set(chars(exclude));
+  const take = (cands, q) => {
+    const fresh = shuffle(cands.filter((c) => !ex.has(c)));
+    const stale = shuffle(cands.filter((c) => ex.has(c)));
+    return shuffle(fresh.concat(stale).slice(0, q));
+  };
+  const gid = groupId || (t.group_ids.length ? t.group_ids[Math.floor(Math.random() * t.group_ids.length)] : null);
+  let out;
+  if (gid) {
+    const g = DATA.groups.find((x) => x.id === gid);
+    let can = false;
+    const stages = g.stages.map((st) => {
+      const cands = [...new Set(chars(st.characters))];
+      if (cands.length > st.quota) can = true;
+      return { name: st.name, hint: st.hint || "", characters: take(cands, st.quota) };
+    });
+    out = { source: "group", theme_id: t.id, group_id: g.id, group_name: g.name, tagline: g.tagline, can_redraw: can, stages };
+  } else {
+    const pool = [...new Set(chars(t.pool))];
+    out = { source: "pool", theme_id: t.id, group_id: null, group_name: t.short, tagline: t.description,
+            can_redraw: pool.length > 20, stages: [{ name: "", hint: "", characters: take(pool, Math.min(20, pool.length)) }] };
+  }
+  const all = out.stages.flatMap((s) => s.characters);
+  out.meanings = Object.fromEntries(all.filter((c) => DATA.meanings[c]).map((c) => [c, DATA.meanings[c]]));
+  return out;
+}
+async function draw(themeId, groupId, exclude) {
+  if (!API_BASE) return localPick(themeId, groupId, exclude);
+  const q = new URLSearchParams({ theme_id: themeId, exclude: exclude || "" });
+  if (groupId) q.set("group_id", groupId);
+  const r = await fetch(`${API_BASE}/pick?${q}`, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+async function getThemes() {
+  if (!API_BASE) return DATA.themes.map((t) => ({ id: t.id, short: t.short, name: t.name }));
+  const r = await fetch(`${API_BASE}/themes`);
+  if (!r.ok) throw new Error(r.status);
+  return (await r.json()).themes;
+}
+
+/* ===== 畫面 ===== */
+let current = null;      // 目前這組字
+let themes = [];
+
+function showPicker() { $("picker").hidden = false; $("result").hidden = true; }
+function showResult() { $("picker").hidden = true; $("result").hidden = false; }
+
+async function openPanel() {
+  $("panel").hidden = false;
+  $("helper").setAttribute("aria-expanded", "true");
+  if (!themes.length) {
+    try { themes = await getThemes(); renderChips(); }
+    catch { toast("靈感暫時載入不了，請直接輸入想寫的字"); }
+  }
+}
+function closePanel() { $("panel").hidden = true; $("helper").setAttribute("aria-expanded", "false"); }
+
+function renderChips() {
+  $("chips").replaceChildren(...themes.map((t) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = t.short;
+    b.addEventListener("click", () => pick(t.id));
+    return b;
+  }));
+}
+
+async function pick(themeId, groupId = null, exclude = "") {
+  try {
+    current = await draw(themeId, groupId, exclude);
+  } catch { toast("暫時抽不到字，請再試一次"); return; }
+  renderResult();
+}
+
+function renderResult() {
+  const r = current;
+  $("gname").textContent = r.group_name;
+  $("tagline").textContent = r.tagline || "";
+  const grid = $("grid"); grid.replaceChildren();
+  let i = 0;
+  const tileFor = (c, stageName) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tile"; b.textContent = c; b.style.setProperty("--i", i++);
+    const m = r.meanings && r.meanings[c];
+    b.setAttribute("aria-label", m ? `${c}，${m.meaning}` : c);
+    b.addEventListener("click", () => openSheet(c, stageName));
+    return b;
+  };
+  r.stages.forEach((st) => {
+    if (st.name) {
+      const row = document.createElement("div"); row.className = "stage";
+      const label = document.createElement("div"); label.className = "stage-name"; label.textContent = st.name;
+      const tiles = document.createElement("div"); tiles.className = "tiles";
+      st.characters.forEach((c) => tiles.append(tileFor(c, st.name)));
+      row.append(label, tiles); grid.append(row);
+    } else {
+      const tiles = document.createElement("div"); tiles.className = "tiles flat";
+      st.characters.forEach((c) => tiles.append(tileFor(c, "")));
+      grid.append(tiles);
+    }
+  });
+  $("redrawBtn").hidden = !r.can_redraw;
+  $("noRedraw").hidden = r.can_redraw;
+  showResult();
+}
+
+function openSheet(c, stageName) {
+  const m = (current.meanings && current.meanings[c]) || {};
+  $("sc").textContent = c;
+  $("ss").textContent = stageName ? `${current.group_name} ・ ${stageName}` : current.group_name;
+  $("sm").textContent = m.meaning || "";
+  $("sk").replaceChildren(...(m.keywords || []).map((k) => { const s = document.createElement("span"); s.textContent = k; return s; }));
+  $("sheet").dataset.char = c; $("sheet").dataset.stage = stageName || "";
+  $("sheet").showModal();
+}
+
+function setStatus(html) { $("status").innerHTML = html; }
+function useChar(c, detail) {
+  $("mine").value = c;
+  document.dispatchEvent(new CustomEvent("chenmo:character-chosen", { detail }));
+  window.chenmoLastPick = detail;
+  setStatus(detail.source === "self" ? `已選擇：<b>${c}</b>`
+    : `已帶入：<b>${c}</b>（來自「${current.group_name}${detail.stage ? "・" + detail.stage : ""}」）`);
+}
+
+/* ===== 事件 ===== */
+$("helper").addEventListener("click", () => ($("panel").hidden ? openPanel() : closePanel()));
+$("changeBtn").addEventListener("click", showPicker);
+$("randomBtn").addEventListener("click", () => { if (themes.length) pick(themes[Math.floor(Math.random() * themes.length)].id); });
+$("redrawBtn").addEventListener("click", () => {
+  const prev = current.stages.flatMap((s) => s.characters).join("");
+  pick(current.theme_id, current.group_id, prev);
+});
+$("useBtn").addEventListener("click", () => {
+  const d = $("sheet").dataset;
+  useChar(d.char, { char: d.char, source: "suggested", theme_id: current.theme_id, group_id: current.group_id, stage: d.stage || null });
+  $("sheet").close(); closePanel(); $("mine").focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+$("backBtn").addEventListener("click", () => $("sheet").close());
+$("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").close(); });
+$("confirm").addEventListener("click", () => {
+  const v = $("mine").value.trim();
+  if (!v) { $("mine").focus(); return; }
+  useChar(v, { char: v, source: "self", theme_id: null, group_id: null, stage: null });
+});
+$("mine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("confirm").click(); });
+$("mine").addEventListener("input", () => setStatus(""));
+</script>
+</body>
+</html>

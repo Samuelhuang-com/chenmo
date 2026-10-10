@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>辰墨軒｜選字靈感</title>
+<!--
+  辰墨軒｜智慧主題選字 UI 原型（v1.1）
+  - 單檔、無相依，直接用瀏覽器開啟即可操作。
+  - 資料為建置時內嵌的字庫快照（DATA）；正式站請把 API_BASE 設為 "/api/characters"，
+    就會改走後端 /pick（重抽以 exclude 傳入上一組字）。
+  - 「就寫這個字」會觸發 document 上的 CustomEvent "chenmo:character-chosen"，
+    detail = { char, source, theme_id, group_id, stage }，可接回既有的手寫／測字流程，
+    並記錄這個字是「自填」還是「系統建議」。
+-->
+<style>
+:root{
+  --bg:#f5f0e6; --card:#fffdf8; --tile:#fbf7ee; --ink:#1f1a14; --muted:#7a6f61;
+  --line:#ddd2bf; --accent:#a93226; --accent-ink:#fff; --shadow:0 1px 2px rgba(60,40,10,.06),0 8px 24px rgba(60,40,10,.06);
+  --kai:"Kaiti TC","BiauKai","DFKai-SB","標楷體","KaiTi","STKaiti","Noto Serif TC","Noto Serif CJK TC",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Noto Sans CJK TC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#16130f; --card:#1f1b16; --tile:#27221b; --ink:#efe7d8; --muted:#a29683;
+    --line:#3b342a; --accent:#d9594a; --accent-ink:#1a0f0d; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16130f; --card:#1f1b16; --tile:#27221b; --ink:#efe7d8; --muted:#a29683;
+  --line:#3b342a; --accent:#d9594a; --accent-ink:#1a0f0d; --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--sans);
+  padding:max(16px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom))}
+.wrap{max-width:520px;margin:0 auto}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.brand{text-align:center;padding:20px 0 16px}
+.brand h1{margin:0;font:600 30px/1.2 var(--kai);letter-spacing:.5em;padding-left:.5em}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:14px;letter-spacing:.2em}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+@media (min-width:480px){.card{padding:20px}}
+.q{display:block;font-size:17px;font-weight:600;margin-bottom:10px}
+.row{display:flex;gap:10px}
+.row input{flex:1;min-width:0;height:52px;border:1px solid var(--line);border-radius:12px;background:var(--tile);
+  color:var(--ink);padding:0 14px;font:22px var(--kai)}
+.row input::placeholder{font:15px var(--sans);color:var(--muted)}
+.btn{min-height:52px;padding:0 20px;border-radius:12px;border:1px solid var(--line);background:var(--tile);font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:active{transform:scale(.98)}
+.status{margin:10px 0 0;font-size:14px;color:var(--muted)}
+.status:empty{display:none}
+.status b{font-family:var(--kai);font-size:18px;color:var(--ink)}
+
+.helper{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:14px;min-height:48px;
+  border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--accent);font-weight:600}
+.helper .arrow{transition:transform .2s}
+.helper[aria-expanded="true"] .arrow{transform:rotate(180deg)}
+
+#panel{margin-top:16px;border-top:1px solid var(--line);padding-top:16px}
+.lead{margin:0 0 12px;color:var(--muted);font-size:15px}
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.chip{min-height:52px;border:1px solid var(--line);border-radius:12px;background:var(--tile);font-weight:600;font-size:15px;padding:0 4px}
+.chip:hover{border-color:var(--accent)}
+.link{background:none;border:0;color:var(--accent);font-weight:600;min-height:44px;padding:0 4px;text-decoration:underline;text-underline-offset:4px}
+.center{display:block;margin:6px auto 0}
+
+.result-head{display:flex;align-items:center;justify-content:space-between}
+.result h2{margin:4px 0 0;font:600 26px/1.3 var(--kai);letter-spacing:.15em}
+.tagline{margin:2px 0 14px;color:var(--muted);font-size:14px}
+.stage{display:grid;grid-template-columns:4.9em minmax(0,1fr);gap:6px;align-items:center;margin-bottom:8px}
+.stage-name{position:relative;font-size:13px;color:var(--muted);padding-left:12px;line-height:1.3}
+.stage-name::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--accent)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.flat{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:8px}
+.tile{aspect-ratio:1/1;min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--tile);
+  font:28px/1 var(--kai);display:grid;place-items:center;animation:rise .35s both;animation-delay:calc(var(--i)*18ms)}
+.tile:hover{border-color:var(--accent)}
+.tile:active{transform:scale(.95)}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.actions{display:flex;justify-content:center;margin-top:12px}
+.note{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--muted)}
+.hint{margin:10px 0 0;text-align:center;font-size:13.5px;color:var(--muted)}
+
+dialog{border:0;padding:0;background:transparent;color:var(--ink);width:100%;max-width:100%;margin:auto 0 0}
+dialog::backdrop{background:rgba(20,12,4,.45)}
+.sheet{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px max(24px,env(safe-area-inset-bottom));text-align:center;
+  max-width:520px;margin:0 auto;animation:up .25s both}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.sheet .big{font:96px/1.1 var(--kai)}
+.sheet .st{margin:2px 0 0;color:var(--muted);font-size:13px;letter-spacing:.15em}
+.sheet .mean{margin:10px 0 8px;font-size:18px}
+.kw{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.kw span{font-size:13px;padding:2px 12px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.sheet .btn{display:block;width:100%}
+.sheet .btn+.btn{margin-top:8px;border-color:transparent;background:transparent;color:var(--muted)}
+@media (min-width:600px){
+  dialog{margin:auto}
+  .sheet{border-radius:20px;width:420px}
+}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 18px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="brand">
+    <h1>辰墨軒</h1>
+    <p>一字一念，從心出發</p>
+  </header>
+
+  <section class="card" aria-labelledby="q-label">
+    <label class="q" id="q-label" for="mine">想寫什麼字？</label>
+    <div class="row">
+      <input id="mine" type="text" autocomplete="off" placeholder="直接輸入你想寫的字">
+      <button class="btn primary" id="confirm" type="button">確定</button>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+
+    <button class="helper" id="helper" type="button" aria-expanded="false" aria-controls="panel">
+      不知道寫什麼？給我一點靈感 <span class="arrow" aria-hidden="true">▾</span>
+    </button>
+
+    <div id="panel" hidden>
+      <div id="picker">
+        <p class="lead">選一個你現在比較想談的方向</p>
+        <div class="chips" id="chips"></div>
+        <button class="link center" id="randomBtn" type="button">或者，隨機給我一點靈感</button>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="result-head">
+          <button class="link" id="changeBtn" type="button">‹ 換個方向</button>
+        </div>
+        <div aria-live="polite">
+          <h2 id="gname"></h2>
+          <p class="tagline" id="tagline"></p>
+        </div>
+        <div id="grid"></div>
+        <div class="actions"><button class="btn" id="redrawBtn" type="button">換一組字</button></div>
+        <p class="hint" id="noRedraw" hidden>這個方向的字庫還在擴充，先從這 20 個字挑挑看。</p>
+        <p class="note">點一個字看看它的意思。字義僅作書寫與自我反思的參考。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="sheet" aria-labelledby="sc">
+  <div class="sheet">
+    <div class="big" id="sc"></div>
+    <p class="st" id="ss"></p>
+    <p class="mean" id="sm"></p>
+    <div class="kw" id="sk"></div>
+    <button class="btn primary" id="useBtn" type="button">就寫這個字</button>
+    <button class="btn" id="backBtn" type="button">再看看</button>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ===== 設定 ===== */
+const API_BASE = null;            // 正式站改成 "/api/characters"
+const DATA = {"themes":[{"id":"life","name":"人生方向・志向","short":"人生方向","description":"出發、立志、堅持、開展、抵達","prompt":"你現在最想走向哪個目標？","group_ids":["life_breakthrough"],"pool":"志願夢望行進達成啟程途路遠毅勇恆堅信拓展"},{"id":"love","name":"情感緣分・人際","short":"情感人際","description":"相遇、相識、理解、珍惜、維繫","prompt":"你最想珍惜或改善的是哪段關係？","group_ids":["love_cherish"],"pool":"緣遇情愛念思惜盼守伴合和信誠諒恩親知暖聚"},{"id":"mind","name":"心境修養・內在","short":"心境修養","description":"安定、清明、自省、包容、平衡","prompt":"你現在最希望心裡多一點什麼？","group_ids":["mind_calm"],"pool":"靜安定寧清明悟慧覺省思淡真善柔寬容謙恕平"},{"id":"career","name":"事業成就・工作","short":"事業工作","description":"能力、專注、策略、責任、成長","prompt":"你在工作或學習上，想完成什麼？","group_ids":[],"pool":"業職才能創建策謀勤精專實績升任責成功展興"},{"id":"wealth","name":"財富豐足・生活","short":"財富豐足","description":"積累、富足、穩健、共享、安泰","prompt":"對你而言，真正的富足是什麼？","group_ids":[],"pool":"財富裕豐盈利益蓄積聚穩足盛昌隆興福祿泰惠"},{"id":"family","name":"家庭親情・歸屬","short":"家庭親情","description":"親情、照顧、傳承、和睦、歸屬","prompt":"什麼讓你感到有家的溫度？","group_ids":[],"pool":"家親孝慈恩愛護育承傳和睦團聚暖安居根歸福"},{"id":"nature","name":"山水自然・天地","short":"山水自然","description":"山川、草木、氣候、天象、自然之美","prompt":"哪一種自然景象最像你現在的心情？","group_ids":[],"pool":"山水川海江河泉溪峰嶺林森松竹雲風雨雪月星"},{"id":"time","name":"時序變化・轉機","short":"時序轉機","description":"季節輪替、開始與結束、變化與新生","prompt":"你正在迎接哪一段新的開始？","group_ids":[],"pool":"春夏秋冬晨夕朝暮初終始末新舊轉變化復續生"},{"id":"learn","name":"學問智慧・探索","short":"學問智慧","description":"好奇、學習、求證、理解、智慧","prompt":"你最近最想弄懂的一件事是什麼？","group_ids":[],"pool":"學習知識智慧問思研究察觀解悟明理道法文博"},{"id":"choice","name":"抉擇進退・得失","short":"抉擇進退","description":"比較、選擇、取捨、勇於決定","prompt":"你目前有哪些想做卻尚未決定的事？","group_ids":[],"pool":"選擇取捨進退去留得失利弊衡斷決定機變守放"},{"id":"bless","name":"吉祥祝福・祈願","short":"吉祥祝福","description":"福氣、平安、喜樂、順遂、祝願","prompt":"你最想送給自己或他人的祝福是什麼？","group_ids":[],"pool":"福祿壽喜吉祥瑞慶樂康泰安順興旺昌隆盛如意"},{"id":"art","name":"文人雅趣・藝術","short":"文人雅趣","description":"書寫、審美、雅趣、文化、藝術","prompt":"你想用哪一個字表達今天的意境？","group_ids":[],"pool":"詩書畫琴棋墨筆硯雅韻逸趣藝文香茶竹蘭梅菊"}],"groups":[{"id":"life_breakthrough","theme_id":"life","name":"突破困境","tagline":"心有方向，步履自有力量。","summary":"面對阻礙，從理解到行動，再走向成長","prompt":"你現在最想跨越什麼困難？","sample_size":20,"stages":[{"name":"看見困境","hint":"先看清楚眼前的挑戰","quota":4,"characters":"難阻困關礙逆險滯"},{"name":"重新思考","hint":"停一下，理解自己與局勢","quota":4,"characters":"思省察悟觀知辨明"},{"name":"做出選擇","hint":"找出可以前進的方向","quota":4,"characters":"擇決轉變取捨選定"},{"name":"實際行動","hint":"帶著韌性往前走","quota":4,"characters":"行勇毅堅進恆勤闖"},{"name":"成長結果","hint":"走出新的可能","quota":4,"characters":"新開達成展升通越"}]},{"id":"love_cherish","theme_id":"love","name":"珍惜關係","tagline":"相遇是緣，相知是用心。","summary":"從相遇到了解，建立信任，學會珍惜與相伴","prompt":"你最想珍惜的是哪一個人？","sample_size":20,"stages":[{"name":"相遇","hint":"緣分的起點","quota":4,"characters":"遇緣逢識見迎邀會"},{"name":"了解","hint":"願意聽，也願意懂","quota":4,"characters":"知解聽懂問察諒體"},{"name":"信任","hint":"真誠讓關係站得穩","quota":4,"characters":"信誠真實諾託賴忠"},{"name":"珍惜","hint":"感謝與在乎","quota":4,"characters":"惜恩念感謝敬護愛"},{"name":"相伴","hint":"一起走下去","quota":4,"characters":"伴守暖和陪共久聚"}]},{"id":"mind_calm","theme_id":"mind","name":"找回平靜","tagline":"心靜下來，才能看見自己的路。","summary":"從覺察出發，放慢、整理，走向安定與清明","prompt":"你現在最想讓心裡安靜下來的是什麼？","sample_size":20,"stages":[{"name":"覺察","hint":"先留意此刻的自己","quota":4,"characters":"覺察觀省醒審見照"},{"name":"放慢","hint":"給自己一點空隙","quota":4,"characters":"緩息慢停歇止徐閒"},{"name":"整理","hint":"放下不需要的重量","quota":4,"characters":"理整淡捨放簡容寬"},{"name":"安定","hint":"把心穩穩放好","quota":4,"characters":"定安寧穩靜平守沉"},{"name":"清明","hint":"看得更清楚","quota":4,"characters":"清明慧悟澄朗透空"}]}],"meanings":{"久":{"meaning":"長長久久，耐得住時間","keywords":["持續","耐心"]},"任":{"meaning":"承擔交付的事，也是信任","keywords":["責任","承擔"]},"伴":{"meaning":"有人同行，不孤單","keywords":["陪伴","同行"]},"信":{"meaning":"相信，也被人相信","keywords":["信任","誠信"]},"停":{"meaning":"暫時停下，讓自己喘口氣","keywords":["暫停","休息"]},"傳":{"meaning":"把心意或經驗交給下一個人","keywords":["傳承","分享"]},"共":{"meaning":"一起擁有，一起承擔","keywords":["共同","分享"]},"冬":{"meaning":"收藏與沉澱的季節","keywords":["沉潛","蓄勢"]},"初":{"meaning":"事情剛開始的樣子","keywords":["開始","初心"]},"利":{"meaning":"有益，也有實際的好處","keywords":["益處","實用"]},"創":{"meaning":"做出前所未有的東西","keywords":["創造","開拓"]},"功":{"meaning":"努力累積出來的成果","keywords":["成果","用功"]},"勇":{"meaning":"敢於面對害怕的事","keywords":["勇氣","膽識"]},"勤":{"meaning":"肯付出時間與力氣","keywords":["勤奮","踏實"]},"化":{"meaning":"轉變成另一種樣子","keywords":["轉化","變化"]},"升":{"meaning":"慢慢往上提高","keywords":["提升","進步"]},"博":{"meaning":"廣泛涉獵，見識寬廣","keywords":["廣博","見聞"]},"去":{"meaning":"離開，放下舊的位置","keywords":["離開","放下"]},"取":{"meaning":"選擇並拿下需要的","keywords":["選取","把握"]},"合":{"meaning":"彼此相配，匯聚在一起","keywords":["合作","契合"]},"吉":{"meaning":"平順美好的心意","keywords":["吉祥","美好"]},"和":{"meaning":"不急不爭，彼此協調","keywords":["和諧","平和"]},"問":{"meaning":"提出疑惑，尋找答案","keywords":["發問","求知"]},"啟":{"meaning":"打開，開始","keywords":["開啟","啟程"]},"善":{"meaning":"待人處事的美好心意","keywords":["善良","善意"]},"喜":{"meaning":"內心的歡愉","keywords":["喜悅","開心"]},"困":{"meaning":"被圍住，一時難以前進","keywords":["困境","受限"]},"團":{"meaning":"聚在一起成為一體","keywords":["團圓","凝聚"]},"堅":{"meaning":"不輕易動搖","keywords":["堅定","穩固"]},"墨":{"meaning":"書寫的根本，也是沉靜的顏色","keywords":["筆墨","沉靜"]},"壽":{"meaning":"長久平安的期盼","keywords":["長壽","安康"]},"夏":{"meaning":"熱烈而茂盛的季節","keywords":["旺盛","活力"]},"夕":{"meaning":"一天將盡的時刻","keywords":["黃昏","回顧"]},"夢":{"meaning":"心裡嚮往的樣子","keywords":["夢想","期待"]},"失":{"meaning":"失去，也是學習的機會","keywords":["失去","反思"]},"如":{"meaning":"像是、順著心意","keywords":["如願","順遂"]},"始":{"meaning":"起頭，最初的一步","keywords":["開始","起點"]},"孝":{"meaning":"感念並回報長輩的恩情","keywords":["孝順","感念"]},"學":{"meaning":"吸收、練習、改變自己","keywords":["學習","成長"]},"守":{"meaning":"守住心意，也守護所愛","keywords":["守護","堅持"]},"安":{"meaning":"心裡踏實，沒有不安","keywords":["安心","平安"]},"定":{"meaning":"穩住，不再搖擺","keywords":["安定","確定"]},"家":{"meaning":"能放鬆做自己的地方","keywords":["歸屬","溫暖"]},"容":{"meaning":"包容、接納","keywords":["包容","接納"]},"富":{"meaning":"資源與心靈都豐盛","keywords":["富足","充裕"]},"察":{"meaning":"細心觀察，看出端倪","keywords":["觀察","覺察"]},"實":{"meaning":"真實、踏實、不虛浮","keywords":["踏實","真誠"]},"寧":{"meaning":"平靜而安穩","keywords":["寧靜","安寧"]},"審":{"meaning":"仔細檢視，審慎思考","keywords":["審視","慎重"]},"寬":{"meaning":"心胸寬、空間大","keywords":["寬容","放寬"]},"專":{"meaning":"專心一意","keywords":["專注","專業"]},"居":{"meaning":"安身之處","keywords":["安居","生活"]},"展":{"meaning":"攤開、發揮、伸展","keywords":["展開","發揮"]},"山":{"meaning":"穩重、高遠、不動","keywords":["穩重","高遠"]},"峰":{"meaning":"山的最高處","keywords":["高峰","目標"]},"嶺":{"meaning":"連綿的山脈","keywords":["山嶺","延伸"]},"川":{"meaning":"流動不息的河流","keywords":["流動","綿長"]},"平":{"meaning":"平穩、平靜，沒有起伏","keywords":["平靜","公平"]},"康":{"meaning":"身心安好","keywords":["健康","安康"]},"建":{"meaning":"一磚一瓦慢慢建立","keywords":["建立","築起"]},"弊":{"meaning":"不好的一面","keywords":["缺點","代價"]},"徐":{"meaning":"慢慢來，不急","keywords":["從容","緩行"]},"得":{"meaning":"獲得，也是收穫","keywords":["獲得","收穫"]},"復":{"meaning":"回到原本，再一次","keywords":["恢復","重來"]},"志":{"meaning":"心中決定要去的方向","keywords":["志向","決心"]},"忠":{"meaning":"盡心、不相負","keywords":["忠誠","盡心"]},"念":{"meaning":"心裡掛念，放在心上","keywords":["思念","心意"]},"思":{"meaning":"靜下來想一想","keywords":["思考","思念"]},"恆":{"meaning":"長期不變的毅力","keywords":["恆心","持續"]},"恕":{"meaning":"寬容別人，也放過自己","keywords":["寬恕","體諒"]},"恩":{"meaning":"受人幫助而心存感念","keywords":["恩情","感謝"]},"息":{"meaning":"停下來休息，氣息平穩","keywords":["休息","呼吸"]},"悟":{"meaning":"忽然明白了","keywords":["領悟","明白"]},"情":{"meaning":"心中真切的感受","keywords":["情感","心意"]},"惜":{"meaning":"珍惜眼前所擁有的","keywords":["珍惜","愛護"]},"惠":{"meaning":"給予好處與善意","keywords":["恩惠","分享"]},"意":{"meaning":"心裡的想法與用意","keywords":["心意","意境"]},"愛":{"meaning":"關懷，並願意付出","keywords":["關愛","真心"]},"感":{"meaning":"感受到，也感謝","keywords":["感受","感恩"]},"慈":{"meaning":"溫和而有愛的心","keywords":["慈愛","溫柔"]},"慢":{"meaning":"放慢腳步","keywords":["慢下來","從容"]},"慧":{"meaning":"看得透的聰明","keywords":["智慧","洞察"]},"慶":{"meaning":"為美好的事而歡喜","keywords":["慶賀","喜悅"]},"懂":{"meaning":"真正明白對方的意思","keywords":["理解","明白"]},"成":{"meaning":"做成，達到","keywords":["完成","成就"]},"才":{"meaning":"天分與能力","keywords":["才能","潛力"]},"承":{"meaning":"接下來並繼續往下","keywords":["承接","傳承"]},"拓":{"meaning":"向外開闢","keywords":["開拓","延伸"]},"捨":{"meaning":"放下，不再抓緊","keywords":["放下","割捨"]},"擇":{"meaning":"比較後做出選擇","keywords":["選擇","判斷"]},"放":{"meaning":"鬆開手，讓它去","keywords":["放下","釋放"]},"敬":{"meaning":"尊重並用心對待","keywords":["尊敬","謹慎"]},"整":{"meaning":"把亂的東西理順","keywords":["整理","完整"]},"文":{"meaning":"文字與文化","keywords":["文化","涵養"]},"新":{"meaning":"全新的開始","keywords":["嶄新","更新"]},"斷":{"meaning":"做出明確的決定","keywords":["決斷","切開"]},"旺":{"meaning":"興盛、有活力","keywords":["興旺","活力"]},"昌":{"meaning":"興盛、光明","keywords":["昌盛","光明"]},"明":{"meaning":"清楚、明白、明亮","keywords":["明白","光明"]},"星":{"meaning":"夜裡的光點","keywords":["星光","指引"]},"春":{"meaning":"萬物萌芽的季節","keywords":["萌芽","希望"]},"晨":{"meaning":"一天的開頭","keywords":["清晨","新的一天"]},"智":{"meaning":"能判斷、能解決問題","keywords":["智慧","判斷"]},"暖":{"meaning":"溫度，也是心意","keywords":["溫暖","關懷"]},"暮":{"meaning":"傍晚，一天將盡","keywords":["黃昏","沉澱"]},"書":{"meaning":"書本，也是書寫","keywords":["書寫","閱讀"]},"會":{"meaning":"相會，也是領會","keywords":["相會","領會"]},"月":{"meaning":"柔和的光，圓缺有時","keywords":["月光","圓缺"]},"朗":{"meaning":"開闊而明亮","keywords":["開朗","明朗"]},"望":{"meaning":"向遠處看，心懷期盼","keywords":["期望","遠眺"]},"朝":{"meaning":"早晨，也是朝著方向","keywords":["早晨","朝向"]},"末":{"meaning":"最後、尾端","keywords":["結尾","尾聲"]},"松":{"meaning":"四季常青，耐得住寒","keywords":["常青","堅韌"]},"林":{"meaning":"樹木聚集的地方","keywords":["樹林","生長"]},"柔":{"meaning":"柔軟，卻不容易折斷","keywords":["柔軟","溫和"]},"根":{"meaning":"扎在土裡的基礎","keywords":["根本","歸屬"]},"梅":{"meaning":"在寒冷中綻放的花","keywords":["傲雪","堅韌"]},"棋":{"meaning":"布局與取捨","keywords":["布局","策略"]},"森":{"meaning":"樹木繁盛","keywords":["茂盛","深遠"]},"業":{"meaning":"所做的事，所累積的成績","keywords":["事業","功課"]},"樂":{"meaning":"內心愉快","keywords":["快樂","喜樂"]},"機":{"meaning":"機會與時機","keywords":["機會","時機"]},"歇":{"meaning":"暫時停下來休息","keywords":["歇息","休息"]},"止":{"meaning":"停住、到此為止","keywords":["停止","安住"]},"歸":{"meaning":"回到屬於自己的地方","keywords":["歸來","歸屬"]},"毅":{"meaning":"堅定意志，遇難不退","keywords":["毅力","堅持"]},"水":{"meaning":"柔而有力，隨形而變","keywords":["流動","柔韌"]},"江":{"meaning":"大河，寬闊而流長","keywords":["大河","遼闊"]},"決":{"meaning":"下定決心","keywords":["決定","果斷"]},"沉":{"meaning":"沉下來，安靜而穩","keywords":["沉靜","沉穩"]},"河":{"meaning":"流向遠方的水","keywords":["流動","綿延"]},"泉":{"meaning":"從地裡湧出的清水","keywords":["源頭","清澈"]},"法":{"meaning":"方法與準則","keywords":["方法","規矩"]},"泰":{"meaning":"平安順利","keywords":["安泰","順遂"]},"海":{"meaning":"寬闊而包容","keywords":["遼闊","包容"]},"淡":{"meaning":"不濃烈，平和自在","keywords":["淡然","平淡"]},"清":{"meaning":"乾淨、清楚、不混濁","keywords":["清澈","清明"]},"溪":{"meaning":"山間的小水流","keywords":["小溪","清涼"]},"滯":{"meaning":"停住不動，不順暢","keywords":["停滯","卡住"]},"澄":{"meaning":"沉澱後變得清亮","keywords":["澄清","透明"]},"照":{"meaning":"光照見，也是對照","keywords":["照見","觀照"]},"理":{"meaning":"事物的條理與道理","keywords":["條理","道理"]},"琴":{"meaning":"樂器，也是心音","keywords":["琴音","雅趣"]},"瑞":{"meaning":"美好的徵兆","keywords":["祥瑞","美好"]},"生":{"meaning":"生長、生活、新生","keywords":["生長","生機"]},"留":{"meaning":"留下，或被留下","keywords":["停留","保留"]},"畫":{"meaning":"用線條與顏色表達","keywords":["繪畫","意象"]},"盈":{"meaning":"滿滿的","keywords":["充盈","豐滿"]},"益":{"meaning":"有益處，加添","keywords":["助益","增加"]},"盛":{"meaning":"豐盛、興盛","keywords":["盛大","豐盛"]},"盼":{"meaning":"盼望","keywords":["期盼","等待"]},"省":{"meaning":"回頭檢視自己","keywords":["反省","檢視"]},"真":{"meaning":"真實，不假裝","keywords":["真誠","本心"]},"睦":{"meaning":"相處融洽","keywords":["和睦","友好"]},"知":{"meaning":"知道，也是懂得","keywords":["知道","知己"]},"研":{"meaning":"深入探究","keywords":["研究","鑽研"]},"硯":{"meaning":"研墨的石頭","keywords":["文房","沉穩"]},"礙":{"meaning":"擋在前面的阻力","keywords":["阻礙","障礙"]},"祥":{"meaning":"平安吉利的樣子","keywords":["吉祥","平安"]},"祿":{"meaning":"俸祿，生活所需","keywords":["福祿","收入"]},"福":{"meaning":"平安幸福的總稱","keywords":["幸福","福氣"]},"秋":{"meaning":"收成與沉澱的季節","keywords":["收穫","成熟"]},"程":{"meaning":"路程，也是進度","keywords":["路程","階段"]},"積":{"meaning":"一點一滴累積","keywords":["累積","積少成多"]},"穩":{"meaning":"穩當、不搖晃","keywords":["穩健","踏實"]},"究":{"meaning":"追根究柢","keywords":["探究","追問"]},"空":{"meaning":"空出位置，放下雜念","keywords":["空靈","放空"]},"竹":{"meaning":"有節、虛心、挺直","keywords":["氣節","虛心"]},"筆":{"meaning":"書寫的工具","keywords":["書寫","表達"]},"策":{"meaning":"計畫與辦法","keywords":["策略","規劃"]},"簡":{"meaning":"簡單，去掉多餘","keywords":["簡單","精簡"]},"精":{"meaning":"精緻、專精","keywords":["精進","專精"]},"終":{"meaning":"終點，也是結果","keywords":["終點","完成"]},"緣":{"meaning":"人與人之間的牽連","keywords":["緣分","機緣"]},"緩":{"meaning":"放慢節奏","keywords":["緩慢","舒緩"]},"績":{"meaning":"累積的成果","keywords":["成績","成果"]},"續":{"meaning":"接著往下","keywords":["持續","延續"]},"習":{"meaning":"反覆練習","keywords":["練習","習慣"]},"聚":{"meaning":"聚在一起","keywords":["相聚","聚集"]},"職":{"meaning":"所負責的位置與任務","keywords":["職責","工作"]},"聽":{"meaning":"用心聽見","keywords":["傾聽","聆聽"]},"育":{"meaning":"養育、培養","keywords":["養育","栽培"]},"能":{"meaning":"有能力做到","keywords":["能力","可能"]},"興":{"meaning":"興起、興致","keywords":["興趣","興盛"]},"舊":{"meaning":"過去的，熟悉的","keywords":["舊事","熟悉"]},"茶":{"meaning":"靜心品味的飲品","keywords":["品茶","閒適"]},"菊":{"meaning":"秋天開的花，不爭豔","keywords":["淡雅","高潔"]},"蓄":{"meaning":"儲存、積蓄","keywords":["儲蓄","蓄力"]},"藝":{"meaning":"技藝與創作","keywords":["技藝","藝術"]},"蘭":{"meaning":"幽靜清雅的花","keywords":["幽雅","氣質"]},"行":{"meaning":"動身去做","keywords":["行動","實踐"]},"衡":{"meaning":"比較、權衡輕重","keywords":["權衡","平衡"]},"裕":{"meaning":"寬裕、不匱乏","keywords":["充裕","從容"]},"見":{"meaning":"看見，遇見","keywords":["看見","見面"]},"親":{"meaning":"親近、親人","keywords":["親人","親近"]},"覺":{"meaning":"感覺到，醒悟","keywords":["覺察","覺醒"]},"觀":{"meaning":"仔細看","keywords":["觀察","觀照"]},"解":{"meaning":"解開、理解","keywords":["理解","化解"]},"託":{"meaning":"託付、依靠","keywords":["託付","依靠"]},"詩":{"meaning":"凝練的文字與情感","keywords":["詩意","抒情"]},"誠":{"meaning":"真心實意","keywords":["誠懇","真誠"]},"諒":{"meaning":"體諒對方的難處","keywords":["體諒","原諒"]},"諾":{"meaning":"答應，說到做到","keywords":["承諾","守信"]},"謀":{"meaning":"思考怎麼做","keywords":["謀劃","思慮"]},"謙":{"meaning":"不自滿，願意學習","keywords":["謙虛","謙和"]},"謝":{"meaning":"說出感謝","keywords":["感謝","道謝"]},"識":{"meaning":"認識，也是見識","keywords":["認識","見識"]},"護":{"meaning":"保護、照看","keywords":["守護","照顧"]},"變":{"meaning":"改變，不同於原來","keywords":["改變","變化"]},"豐":{"meaning":"豐富、充足","keywords":["豐富","豐收"]},"財":{"meaning":"金錢與資源","keywords":["財富","資源"]},"責":{"meaning":"應盡的本分","keywords":["責任","承擔"]},"賴":{"meaning":"可依靠","keywords":["依賴","信賴"]},"越":{"meaning":"跨過、超越","keywords":["跨越","超越"]},"趣":{"meaning":"讓人投入的樂趣","keywords":["興趣","趣味"]},"足":{"meaning":"足夠，也是知足","keywords":["知足","充足"]},"路":{"meaning":"走過的、正要走的地方","keywords":["道路","旅程"]},"轉":{"meaning":"轉換角度或方向","keywords":["轉彎","轉機"]},"辨":{"meaning":"分辨清楚","keywords":["分辨","辨識"]},"迎":{"meaning":"迎接","keywords":["迎接","歡迎"]},"退":{"meaning":"退一步，留餘地","keywords":["退讓","後退"]},"逆":{"meaning":"方向相反，不順","keywords":["逆境","逆流"]},"透":{"meaning":"穿過，看得通透","keywords":["通透","透徹"]},"途":{"meaning":"路途","keywords":["旅途","過程"]},"通":{"meaning":"暢通，也是通達","keywords":["通達","疏通"]},"逢":{"meaning":"恰好遇上","keywords":["相逢","巧遇"]},"進":{"meaning":"往前一步","keywords":["前進","進步"]},"逸":{"meaning":"閒適自在","keywords":["飄逸","安逸"]},"遇":{"meaning":"遇見","keywords":["遇見","機遇"]},"道":{"meaning":"道路，也是道理","keywords":["道理","方向"]},"達":{"meaning":"到達、通達","keywords":["抵達","達成"]},"遠":{"meaning":"距離長，眼光也遠","keywords":["遠大","長遠"]},"選":{"meaning":"從幾個中挑一個","keywords":["挑選","選擇"]},"邀":{"meaning":"邀請","keywords":["邀請","邀約"]},"醒":{"meaning":"醒來，也是醒悟","keywords":["清醒","醒悟"]},"開":{"meaning":"打開、展開","keywords":["開啟","開朗"]},"閒":{"meaning":"閒適，不匆忙","keywords":["悠閒","自在"]},"闖":{"meaning":"勇敢衝破阻力","keywords":["闖蕩","嘗試"]},"關":{"meaning":"關卡，也是關心","keywords":["關卡","關懷"]},"阻":{"meaning":"擋住去路","keywords":["阻擋","阻力"]},"陪":{"meaning":"在身邊相伴","keywords":["陪伴","同在"]},"隆":{"meaning":"盛大、興隆","keywords":["興隆","盛大"]},"險":{"meaning":"有危險或不確定","keywords":["風險","冒險"]},"雅":{"meaning":"端莊而有品味","keywords":["典雅","雅致"]},"難":{"meaning":"不容易的事","keywords":["困難","挑戰"]},"雨":{"meaning":"滋潤大地的水","keywords":["雨水","滋潤"]},"雪":{"meaning":"潔白而安靜","keywords":["潔白","寧靜"]},"雲":{"meaning":"飄來飄去，不被拘束","keywords":["自在","變幻"]},"靜":{"meaning":"安靜，不吵鬧","keywords":["安靜","沉靜"]},"韻":{"meaning":"餘味與氣韻","keywords":["韻味","餘韻"]},"順":{"meaning":"順著走，沒有阻礙","keywords":["順利","順遂"]},"願":{"meaning":"心裡的願望","keywords":["願望","願意"]},"風":{"meaning":"看不見卻能感受到","keywords":["微風","流動"]},"香":{"meaning":"讓人舒服的氣味","keywords":["香氣","雅致"]},"體":{"meaning":"身體，也是體會","keywords":["體會","體諒"]}}};    // 建置時內嵌的字庫快照（API 模式可移除）
+
+/* ===== 工具 ===== */
+const $ = (id) => document.getElementById(id);
+const chars = (s) => Array.from(s || "");
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const store = { get(k){ try { return sessionStorage.getItem(k); } catch { return null; } }, set(k,v){ try { sessionStorage.setItem(k,v); } catch {} } };
+let toastTimer;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1800); }
+
+/* ===== 取得字組：本機（與 character_picker.py 相同規則）或 API ===== */
+function localPick(themeId, groupId, exclude) {
+  const t = DATA.themes.find((x) => x.id === themeId);
+  const ex = new Set(chars(exclude));
+  const take = (cands, q) => {
+    const fresh = shuffle(cands.filter((c) => !ex.has(c)));
+    const stale = shuffle(cands.filter((c) => ex.has(c)));
+    return shuffle(fresh.concat(stale).slice(0, q));
+  };
+  const gid = groupId || (t.group_ids.length ? t.group_ids[Math.floor(Math.random() * t.group_ids.length)] : null);
+  let out;
+  if (gid) {
+    const g = DATA.groups.find((x) => x.id === gid);
+    let can = false;
+    const stages = g.stages.map((st) => {
+      const cands = [...new Set(chars(st.characters))];
+      if (cands.length > st.quota) can = true;
+      return { name: st.name, hint: st.hint || "", characters: take(cands, st.quota) };
+    });
+    out = { source: "group", theme_id: t.id, group_id: g.id, group_name: g.name, tagline: g.tagline, can_redraw: can, stages };
+  } else {
+    const pool = [...new Set(chars(t.pool))];
+    out = { source: "pool", theme_id: t.id, group_id: null, group_name: t.short, tagline: t.description,
+            can_redraw: pool.length > 20, stages: [{ name: "", hint: "", characters: take(pool, Math.min(20, pool.length)) }] };
+  }
+  const all = out.stages.flatMap((s) => s.characters);
+  out.meanings = Object.fromEntries(all.filter((c) => DATA.meanings[c]).map((c) => [c, DATA.meanings[c]]));
+  return out;
+}
+async function draw(themeId, groupId, exclude) {
+  if (!API_BASE) return localPick(themeId, groupId, exclude);
+  const q = new URLSearchParams({ theme_id: themeId, exclude: exclude || "" });
+  if (groupId) q.set("group_id", groupId);
+  const r = await fetch(`${API_BASE}/pick?${q}`, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+async function getThemes() {
+  if (!API_BASE) return DATA.themes.map((t) => ({ id: t.id, short: t.short, name: t.name }));
+  const r = await fetch(`${API_BASE}/themes`);
+  if (!r.ok) throw new Error(r.status);
+  return (await r.json()).themes;
+}
+
+/* ===== 畫面 ===== */
+let current = null;      // 目前這組字
+let themes = [];
+
+function showPicker() { $("picker").hidden = false; $("result").hidden = true; }
+function showResult() { $("picker").hidden = true; $("result").hidden = false; }
+
+async function openPanel() {
+  $("panel").hidden = false;
+  $("helper").setAttribute("aria-expanded", "true");
+  if (!themes.length) {
+    try { themes = await getThemes(); renderChips(); }
+    catch { toast("靈感暫時載入不了，請直接輸入想寫的字"); }
+  }
+}
+function closePanel() { $("panel").hidden = true; $("helper").setAttribute("aria-expanded", "false"); }
+
+function renderChips() {
+  $("chips").replaceChildren(...themes.map((t) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = t.short;
+    b.addEventListener("click", () => pick(t.id));
+    return b;
+  }));
+}
+
+async function pick(themeId, groupId = null, exclude = "") {
+  try {
+    current = await draw(themeId, groupId, exclude);
+  } catch { toast("暫時抽不到字，請再試一次"); return; }
+  renderResult();
+}
+
+function renderResult() {
+  const r = current;
+  $("gname").textContent = r.group_name;
+  $("tagline").textContent = r.tagline || "";
+  const grid = $("grid"); grid.replaceChildren();
+  let i = 0;
+  const tileFor = (c, stageName) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tile"; b.textContent = c; b.style.setProperty("--i", i++);
+    const m = r.meanings && r.meanings[c];
+    b.setAttribute("aria-label", m ? `${c}，${m.meaning}` : c);
+    b.addEventListener("click", () => openSheet(c, stageName));
+    return b;
+  };
+  r.stages.forEach((st) => {
+    if (st.name) {
+      const row = document.createElement("div"); row.className = "stage";
+      const label = document.createElement("div"); label.className = "stage-name"; label.textContent = st.name;
+      const tiles = document.createElement("div"); tiles.className = "tiles";
+      st.characters.forEach((c) => tiles.append(tileFor(c, st.name)));
+      row.append(label, tiles); grid.append(row);
+    } else {
+      const tiles = document.createElement("div"); tiles.className = "tiles flat";
+      st.characters.forEach((c) => tiles.append(tileFor(c, "")));
+      grid.append(tiles);
+    }
+  });
+  $("redrawBtn").hidden = !r.can_redraw;
+  $("noRedraw").hidden = r.can_redraw;
+  showResult();
+}
+
+function openSheet(c, stageName) {
+  const m = (current.meanings && current.meanings[c]) || {};
+  $("sc").textContent = c;
+  $("ss").textContent = stageName ? `${current.group_name} ・ ${stageName}` : current.group_name;
+  $("sm").textContent = m.meaning || "";
+  $("sk").replaceChildren(...(m.keywords || []).map((k) => { const s = document.createElement("span"); s.textContent = k; return s; }));
+  $("sheet").dataset.char = c; $("sheet").dataset.stage = stageName || "";
+  $("sheet").showModal();
+}
+
+function setStatus(html) { $("status").innerHTML = html; }
+function useChar(c, detail) {
+  $("mine").value = c;
+  document.dispatchEvent(new CustomEvent("chenmo:character-chosen", { detail }));
+  window.chenmoLastPick = detail;
+  setStatus(detail.source === "self" ? `已選擇：<b>${c}</b>`
+    : `已帶入：<b>${c}</b>（來自「${current.group_name}${detail.stage ? "・" + detail.stage : ""}」）`);
+}
+
+/* ===== 事件 ===== */
+$("helper").addEventListener("click", () => ($("panel").hidden ? openPanel() : closePanel()));
+$("changeBtn").addEventListener("click", showPicker);
+$("randomBtn").addEventListener("click", () => { if (themes.length) pick(themes[Math.floor(Math.random() * themes.length)].id); });
+$("redrawBtn").addEventListener("click", () => {
+  const prev = current.stages.flatMap((s) => s.characters).join("");
+  pick(current.theme_id, current.group_id, prev);
+});
+$("useBtn").addEventListener("click", () => {
+  const d = $("sheet").dataset;
+  useChar(d.char, { char: d.char, source: "suggested", theme_id: current.theme_id, group_id: current.group_id, stage: d.stage || null });
+  $("sheet").close(); closePanel(); $("mine").focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+$("backBtn").addEventListener("click", () => $("sheet").close());
+$("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").close(); });
+$("confirm").addEventListener("click", () => {
+  const v = $("mine").value.trim();
+  if (!v) { $("mine").focus(); return; }
+  useChar(v, { char: v, source: "self", theme_id: null, group_id: null, stage: null });
+});
+$("mine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("confirm").click(); });
+$("mine").addEventListener("input", () => setStatus(""));
+</script>
+</body>
+</html>

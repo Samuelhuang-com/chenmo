@@ -144,6 +144,15 @@ async def history(request: Request, q: str = "", page: int = 1,
         "master": master, "cases": cases[:HISTORY_PAGE], "q": q, "page": page, "has_next": has_next})
 
 
+@router.get("/master/pick-stats")
+async def pick_stats_page(request: Request, days: int = 0, master: dict = Depends(require_master_page)):
+    """自選字統計：多少人用自選字、有沒有選方向、各方向被選次數（只算數量）。"""
+    from app.services.pick_stats import load_cases, summarize
+    days = days if days in (7, 30) else 0
+    stats = summarize(await load_cases(get_repo()), days=days or None)
+    return templates.TemplateResponse(request, "master/pick_stats.html", {"master": master, "s": stats})
+
+
 @router.get("/master/case/{case_id}")
 async def workbench(request: Request, case_id: str, master: dict = Depends(require_master_page)):
     case = await get_repo().get(case_id)

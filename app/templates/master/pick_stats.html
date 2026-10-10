@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}自選字統計｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">回案前</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+<div class="history">
+  <h1 class="ask-title">自選字統計</h1>
+  <p class="hint">只統計數量，不含問題內容與個人資料。用來判斷問事者有沒有在用「方向」，以及下一批要替哪些方向補子題。</p>
+  <nav class="stat-range" aria-label="統計區間">
+    {% for d, label in [(0, "全部"), (30, "近 30 天"), (7, "近 7 天")] %}
+    <a class="btn on-yan{% if (s.days or 0) == d %} is-on{% endif %}" href="/master/pick-stats{% if d %}?days={{ d }}{% endif %}"{% if (s.days or 0) == d %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  <section class="paper">
+    <h2>總覽</h2>
+    <table class="sys-table">
+      <tr><th>問字總數（已呈送）</th><td>{{ s.total }}</td></tr>
+      <tr><th>自己手寫</th><td>{{ s.written }}</td></tr>
+      <tr><th>使用自選字</th><td>{{ s.picked }}（{{ s.picked_pct }}%）</td></tr>
+      <tr><th>　├ 隨機字（沒選方向）</th><td>{{ s.random }}</td></tr>
+      <tr><th>　└ 有選方向</th><td>{{ s.themed }}</td></tr>
+      <tr><th>自選字中，有選方向的比例</th><td><b>{{ s.themed_pct }}%</b></td></tr>
+      <tr><th>選定前平均看了幾組</th><td>{{ s.avg_rounds }}（第一組就選定：{{ s.first_set_pct }}%）</td></tr>
+    </table>
+    <p class="hint" style="margin-top:12px">「方向」功能上線前的自選字一律算隨機字，所以全部區間的比例會偏低；要看實際使用情形請選「近 7 天」或「近 30 天」。「看了幾組」包含換方向與按「換一組」。</p>
+  </section>
+
+  <section class="paper">
+    <h2>各方向被選次數</h2>
+    {% if s.themes %}
+    <table class="sys-table stat-table">
+      {% for t in s.themes %}
+      <tr><th>{{ t.name }}</th>
+        <td><span class="stat-bar" style="width: {{ [t.pct, 2]|max }}%"></span><span class="stat-n">{{ t.n }}（{{ t.pct }}%）</span></td></tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="empty">這個區間還沒有人選方向。</p>{% endif %}
+  </section>
+
+  <section class="paper">
+    <h2>最常被選的字（前 10）</h2>
+    {% if s.top_chars %}
+    <p class="stat-chars">{% for c in s.top_chars %}<span><b>{{ c.char }}</b> {{ c.n }}</span>{% endfor %}</p>
+    {% else %}<p class="empty">這個區間還沒有自選字。</p>{% endif %}
+  </section>
+</div>
+{% endblock %}
