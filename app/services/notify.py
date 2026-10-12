@@ -52,13 +52,14 @@ def build_message(case: Case, link: str) -> EmailMessage:
     s = get_settings()
     if case.kind == "yao":
         return build_yao_message(case, link)
-    char = case.char or "（未填）"
+    pair = case.kind == "pair"   # 雙字問心
+    char = (f"{case.char}／{case.char2}" if pair else case.char) or "（未填）"
     source = "自選字" if case.char_source == "picked" else "手寫"
     who = case.profile_text or "未填年次與性別"
     if case.nickname:
         who = f"{case.nickname}　{who}"
     msg = EmailMessage()
-    msg["Subject"] = f"【{s.app_name}】新問字「{char}」— {re.sub(r'（.*?）', '', who)}"
+    msg["Subject"] = f"【{s.app_name}】新{'雙字問心' if pair else '問字'}「{char}」— {re.sub(r'（.*?）', '', who)}"
     msg["From"] = f"{s.app_name} <{s.smtp_user}>"
     msg["To"] = ", ".join(s.notify_recipients)
 
@@ -67,7 +68,8 @@ def build_message(case: Case, link: str) -> EmailMessage:
         "",
         f"所問：{case.question}",
         f"問事者：{who}",
-        f"此字：{char}（{source}，{case.stroke_count} 筆）",
+        f"此字：{char}（{source}，{case.stroke_count} 筆）" if not pair else
+        f"兩字：先寫「{case.char}」（{case.choice_a}），後寫「{case.char2}」（{case.choice_b}），共 {case.stroke_count} 筆",
     ]
     if case.char_source == "picked" and case.offered:
         if case.pick_theme:
@@ -82,7 +84,8 @@ def build_message(case: Case, link: str) -> EmailMessage:
         f"<tr><td style='color:#6b625a;padding:4px 16px 4px 0;white-space:nowrap'>{k}</td>"
         f"<td style='padding:4px 0'>{escape(v)}</td></tr>"
         for k, v in [("所問", case.question), ("問事者", who),
-                     ("此字", f"{char}（{source}，{case.stroke_count} 筆）"),
+                     (("兩字", f"先寫「{case.char}」（{case.choice_a}），後寫「{case.char2}」（{case.choice_b}）")
+                      if pair else ("此字", f"{char}（{source}，{case.stroke_count} 筆）")),
                      *([("挑字方向", case.pick_theme)] if case.char_source == "picked" and case.pick_theme else []),
                      *([("候選字", "、".join(case.offered))] if case.char_source == "picked" and case.offered else []),
                      ("呈送時間", fmt_ms(case.submitted_at))])
@@ -128,7 +131,7 @@ async def notify_new_case(case: Case, base_url: str) -> bool:
 def build_student_message(case: Case, link: str) -> EmailMessage:
     s = get_settings()
     yao = case.kind == "yao"
-    char = case.gua.split(" ")[0] if yao else (case.char or "")
+    char = case.gua.split(" ")[0] if yao else (f"{case.char}／{case.char2}" if case.kind == "pair" else (case.char or ""))
     what, mine = ("卦", "你的卦") if yao else ("字", "你寫的字")
     msg = EmailMessage()
     msg["Subject"] = f"【{s.app_name}】老師已完成「{char}」{what}的解讀"

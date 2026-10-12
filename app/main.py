@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import LoginRequired
 from app.config import get_settings
-from app.routers import api, flags, master, pages, pwa, ws, yao
+from app.routers import api, flags, master, pages, pair, pwa, ws, yao
 from app.services.features import enabled_set
 from app.templating import templates
 
@@ -54,6 +54,7 @@ app.include_router(master.router)
 app.include_router(ws.router)
 app.include_router(pwa.router)
 app.include_router(yao.router)
+app.include_router(pair.router)
 app.include_router(flags.router)
 
 
@@ -78,7 +79,7 @@ def is_private_path(path: str, query: str = "") -> bool:
         return True
     from urllib.parse import parse_qs
     q = parse_qs(query, keep_blank_values=True)
-    return path in ("/ask", "/yao") and ("follow" in q or "redo" in q)
+    return path in ("/ask", "/yao", "/pair") and ("follow" in q or "redo" in q)
 
 
 @app.middleware("http")

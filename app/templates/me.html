@@ -19,7 +19,7 @@
     {% for c in cases %}
     <li>
       <a class="h-item" href="/c/{{ c.token }}">
-        {% if c.kind == "yao" %}<span class="t-char t-gua-name">爻</span>{% else %}<span class="t-char grid-paper">{{ c.char or "？" }}</span>{% endif %}
+        {% if c.kind == "yao" %}<span class="t-char t-gua-name">爻</span>{% elif c.kind == "pair" %}<span class="t-char t-pair grid-paper">{{ c.char }}{{ c.char2 }}</span>{% else %}<span class="t-char grid-paper">{{ c.char or "？" }}</span>{% endif %}
         <span class="h-body">
           <span class="h-q">{{ c.question or "（未填寫問題）" }}</span>
           {% if c.kind == "yao" and c.gua %}<span class="h-meta">{{ c.gua }}</span>{% endif %}

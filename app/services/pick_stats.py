@@ -35,7 +35,7 @@ def _pct(n: int, d: int) -> int:
 
 def summarize(cases: Iterable[Case], days: int | None = None, now: int | None = None) -> dict:
     """days：只算最近幾天（依呈送時間）；None＝全部。問爻案件不算。"""
-    cs = [c for c in cases if c.kind != "yao" and c.status in (CaseStatus.submitted, CaseStatus.answered)]
+    cs = [c for c in cases if c.kind not in ("yao", "pair") and c.status in (CaseStatus.submitted, CaseStatus.answered)]
     if days:
         cutoff = (now if now is not None else now_ms()) - days * DAY_MS
         cs = [c for c in cs if (c.submitted_at or c.created_at) >= cutoff]

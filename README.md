@@ -7,12 +7,12 @@
 ## 本機執行（Windows / VSCode）
 
 ```powershell
-cd chenmo
+cd C:\OneDrive\App\chenmo
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements-dev.txt
 copy .env.example .env        # 預設：SQLite 存檔 + 老師密碼 dev123
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8080
 ```
 
 | 網址 | 用途 |

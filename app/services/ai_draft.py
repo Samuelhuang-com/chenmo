@@ -55,7 +55,28 @@ def _extract_json(text: str) -> dict | None:
         return None
 
 
-async def generate_ex(context: str) -> tuple[dict | None, str]:
+PAIR_SYSTEM = """你是協助測字老師的助理，熟悉文字學、《說文解字》與傳統測字（拆字、增損筆畫、會意聯想）。
+這一題是「雙字問心」：問事者在兩個方向之間猶豫，寫下兩個字，每個字代表一個選擇，先寫的是第一字。
+請用台灣慣用的繁體中文書寫，不做恐嚇性斷言，不涉及醫療、法律、投資的具體建議。你寫的是給老師參考的草稿，老師會再修改。
+
+規則：
+1. 「contrast」（給老師看）：兩三句話說明兩字字義的對比：是相反、互補、還是一前一後的遞進，各自的本義與引申，
+   只能根據提供的說文與辭典資料，不要捏造甲骨文、金文字形。
+2. 「wuxing_note」（給老師看）：一兩句話說明兩字五行的生剋關係在這個問題上可以怎麼看。
+3. 「reading」（老師審閱後給問事者看）：200 到 350 字。語氣像一位溫和的長輩或朋友坐在對面，直接對「你」說話：
+   - 白話、短句，不要文言文，不要「宜」「蓋」「乃」「勿」這類書面詞，不堆砌成語，不說教。
+   - 先把兩個字各自說成白話：這個字讓你想到什麼、它代表的那個選擇看起來是什麼樣子（各兩三句）。
+   - 再把兩個字放在一起看：它們之間的張力在哪裡，有沒有「兩字並看」的第三條路（例如「留中有去」），
+     不一定要二選一。
+   - 可以參考書寫先後與筆跡，但要說得像觀察而不是判決，例如「你先寫了『去』，好像這個念頭比較早就在心裡」。
+     「系統的偏向提示」只是給老師的參考，不要照抄，也不要說出「系統」「訊號」「幾比幾」這些字眼。
+   - 不替問事者做決定，不下絕對的結論，用「看起來」「比較像是」「可以考慮」這種留有餘地的說法；
+     最後給一個具體、做得到的小建議，幫他自己想清楚（例如先問自己哪一邊放不下）。
+   若資料中有「稱呼」，請在開頭自然地叫一次對方，之後用「你」。若是追問，先簡短呼應前面的問題與字。
+只輸出一個 JSON 物件，欄位為 contrast、wuxing_note、reading，不要輸出其他文字。"""
+
+
+async def generate_ex(context: str, system: str = SYSTEM) -> tuple[dict | None, str]:
     """回傳（草稿, 失敗原因）。未設定 API Key 時原因為空字串；失敗會自動重試一次。"""
     s = get_settings()
     if not s.anthropic_api_key:
@@ -71,7 +92,7 @@ async def generate_ex(context: str) -> tuple[dict | None, str]:
             msg = await client.messages.create(
                 model=s.anthropic_model,
                 max_tokens=4000,          # 中文 JSON 容易超過 2000 token 而被截斷
-                system=SYSTEM,
+                system=system,
                 messages=[{"role": "user", "content": context}],
             )
             text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")

@@ -33,3 +33,21 @@ def visible_strokes(events: list[dict]) -> list[dict]:
         elif t == "clear":
             strokes = []
     return strokes
+
+
+# ---------------- 雙字問心：兩個字格的事件存在同一個案件，用 pad 區分 ----------------
+# 第一字的事件不帶 pad 欄位（與問字完全相同），第二字的事件帶 "pad": 1。
+def pad_of(ev: dict) -> int:
+    return 1 if ev.get("pad") == 1 else 0
+
+
+def pad_events(events: list[dict], pad: int) -> list[dict]:
+    """只取某一個字格的事件（undo / clear 也只作用在自己的字格）。"""
+    return [ev for ev in events if pad_of(ev) == pad]
+
+
+def visible_count(events: list[dict]) -> int:
+    """畫面上看得到的總筆數；雙字問心的兩個字格分開計算 undo / clear 再相加。"""
+    if not any(pad_of(ev) for ev in events):
+        return len(visible_strokes(events))
+    return len(visible_strokes(pad_events(events, 0))) + len(visible_strokes(pad_events(events, 1)))

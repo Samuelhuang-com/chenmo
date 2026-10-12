@@ -9,7 +9,7 @@ const PRECACHE = ["/offline", "/static/css/main.css"];
 // 含個人資料的頁面（問事者結果、我的問字、老師端、帶追問／重寫參數的問字頁）：絕不放進快取。
 // 規則要和伺服器 app/main.py 的 is_private_path 保持一致。
 const isPrivate = (u) =>
-  /^\/(c\/|me(\/|$)|master)/.test(u.pathname) || (/^\/(ask|yao)$/.test(u.pathname) && /(^|[?&])(follow|redo)=/.test(u.search));
+  /^\/(c\/|me(\/|$)|master)/.test(u.pathname) || (/^\/(ask|yao|pair)$/.test(u.pathname) && /(^|[?&])(follow|redo)=/.test(u.search));
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));

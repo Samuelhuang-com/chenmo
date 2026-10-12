@@ -134,7 +134,7 @@ async def history(request: Request, q: str = "", page: int = 1,
     if q:
         # 關鍵字搜尋：掃描最近 2000 筆已解案件
         pool = await repo.list_cases(limit=2000, status=CaseStatus.answered)
-        hits = [c for c in pool if q in c.char or q in c.question or q in c.answer or q in c.draft_char]
+        hits = [c for c in pool if q in c.char or q in c.char2 or q in c.question or q in c.answer or q in c.draft_char]
         cases = hits[(page - 1) * HISTORY_PAGE: page * HISTORY_PAGE + 1]
     else:
         cases = await repo.list_cases(limit=HISTORY_PAGE + 1, status=CaseStatus.answered,
@@ -181,7 +181,12 @@ async def api_case(case_id: str, master: dict = Depends(require_master_api)):
     case = await repo.get(case_id)
     if not case:
         raise HTTPException(404)
-    return {"case": case.model_dump(mode="json"), "events": await repo.list_events(case_id)}
+    events = await repo.list_events(case_id)
+    out = {"case": case.model_dump(mode="json"), "events": events}
+    if case.kind == "pair":   # 雙字問心：書寫先後與偏向提示（只有老師看得到）
+        from app.services.pair import summary
+        out["pair"] = summary(case, events)
+    return out
 
 
 def _reading_of(body: AnswerIn) -> tuple[str, str]:
@@ -388,6 +393,18 @@ async def api_jiezi(case_id: str, body: JieziIn, master: dict = Depends(require_
     case = await repo.get(case_id)
     if not case:
         raise HTTPException(404)
+    if case.kind == "pair":   # 雙字問心：兩字對照（此字欄＝第一字，char2＝第二字）
+        from app.services.pair import compose_pair
+        char2 = body.char2 or case.char2
+        if not char2:
+            raise HTTPException(422, "請填入第二個字")
+        key = body.char + char2
+        if case.draft and case.draft_char == key and not body.refresh:
+            return {"char": body.char, "char2": char2, "text": case.draft, "cached": True}
+        result = await compose_pair(case, await repo.list_events(case_id), body.char, char2)
+        if result["ai_used"] or not result["ai_error"]:
+            await repo.update(case_id, draft=result["text"], draft_char=key)
+        return {**result, "cached": False}
     stale = bool(case.derived_yao) and "【參考卦】" not in (case.draft or "")   # 起卦後要重新帶出才會有參考卦
     if case.draft and case.draft_char == body.char and not body.refresh and not stale:
         return {"char": body.char, "text": case.draft, "cached": True}

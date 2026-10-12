@@ -30,6 +30,7 @@ from app.models import now_ms
 # 目前有開關的功能。key 用在網址、資料庫、模板（'yao' in request.state.features）
 FEATURES: dict[str, str] = {
     "yao": "六龍問爻",
+    "pair": "雙字問心",
 }
 
 CACHE_SECONDS = 60

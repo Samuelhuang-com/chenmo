@@ -80,10 +80,16 @@ async def case_page(request: Request, token: str, claim: str = ""):
                                            "is_owner": bool(student and student["email"] == case.owner_email),
                                            "claimed": claimed,
                                            "can_claim": bool(not case.owner_email and case.status.value != "drafting")})
-    strokes = visible_strokes(await repo.list_events(case.id))
+    events = await repo.list_events(case.id)
+    strokes2 = []
+    if case.kind == "pair":   # 雙字問心：兩個字格分開畫
+        from app.services.strokes import pad_events
+        strokes, strokes2 = visible_strokes(pad_events(events, 0)), visible_strokes(pad_events(events, 1))
+    else:
+        strokes = visible_strokes(events)
     return templates.TemplateResponse(request, "case.html",
                                       {"followups": suggest(case.question) if case.status.value == "answered" else [],
-                                       "case": case, "strokes": strokes, "student": student,
+                                       "case": case, "strokes": strokes, "strokes2": strokes2, "student": student,
                                        "is_owner": bool(student and student["email"] == case.owner_email),
                                        "claimed": claimed,
                                        "can_claim": bool(not case.owner_email and case.status.value != "drafting")})

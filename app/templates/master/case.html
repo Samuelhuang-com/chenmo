@@ -7,10 +7,29 @@
 <div class="bench" data-case-id="{{ case.id }}" id="bench">
   <div>
     <section class="paper">
+      {% if case.kind == "pair" %}
+      <div class="bench-pair">
+        <figure>
+          <div class="bench-pad pad-box grid-paper active" data-pad="0" title="點一下，重播控制切換到第一字">
+            <div class="pad-guide" id="pad-guide" aria-hidden="true"></div>
+            <canvas id="pad" aria-label="問事者的第一字"></canvas>
+          </div>
+          <figcaption>第一字 <b id="pair-c0">{{ case.char }}</b><br><span id="pair-k0">{{ case.choice_a }}</span></figcaption>
+        </figure>
+        <figure>
+          <div class="bench-pad pad-box grid-paper" data-pad="1" title="點一下，重播控制切換到第二字">
+            <canvas id="pad2" aria-label="問事者的第二字"></canvas>
+          </div>
+          <figcaption>第二字 <b id="pair-c1">{{ case.char2 }}</b><br><span id="pair-k1">{{ case.choice_b }}</span></figcaption>
+        </figure>
+      </div>
+      <p class="hint" id="pair-active">重播控制目前對著第一字；點一下另一個字格就切換。</p>
+      {% else %}
       <div class="bench-pad pad-box grid-paper">
         <div class="pad-guide" id="pad-guide" aria-hidden="true">{% if case.char_source == "picked" %}{{ case.char }}{% endif %}</div>
         <canvas id="pad" aria-label="問事者的字跡"></canvas>
       </div>
+      {% endif %}
       <div class="replay-bar">
         <button class="btn" type="button" id="play">播放</button>
         <button class="btn" type="button" id="prev">上一筆</button>
@@ -27,6 +46,28 @@
       </div>
     </section>
 
+    {% if case.kind == "pair" %}
+    <section class="paper">
+      <h2>書寫先後與偏向提示<span class="only-teacher">只有老師看得到</span></h2>
+      <p id="pair-order" class="case-profile"></p>
+      <ul class="pair-lean" id="pair-lean"></ul>
+      <p class="pair-lean-sum" id="pair-lean-sum"></p>
+      <p class="hint">偏向提示依先後、順暢、大小、筆畫完整、五行生剋試算，只是參考，請以你的判斷為準。</p>
+    </section>
+    <section class="paper">
+      <h2>筆跡紀錄</h2>
+      <div class="pair-facts">
+        {% for i in (0, 1) %}<div>
+          <h3>{{ "第一字" if i == 0 else "第二字" }}</h3>
+          <dl class="facts" id="facts{{ '' if i == 0 else '2' }}"></dl>
+          <table class="stroke-table">
+            <thead><tr><th>筆</th><th>書寫</th><th>筆前停頓</th></tr></thead>
+            <tbody id="stroke-rows{{ '' if i == 0 else '2' }}"></tbody>
+          </table>
+        </div>{% endfor %}
+      </div>
+    </section>
+    {% else %}
     <section class="paper">
       <h2>筆跡紀錄</h2>
       <dl class="facts" id="facts"></dl>
@@ -35,6 +76,7 @@
         <tbody id="stroke-rows"></tbody>
       </table>
     </section>
+    {% endif %}
   </div>
 
   <div>
@@ -47,26 +89,46 @@
         <ol>{% for c in case.follow_chain %}<li>「{{ c.question }}」<span class="fc-char">{{ c.char }}</span></li>{% endfor %}</ol>
         <span class="hint">AI 草稿已把前面的問題、字與你當時送出的解讀一併納入，請綜合判讀。</span>
       </div>{% endif %}
+      {% if case.kind == "pair" %}<p class="case-profile picked-note" id="pair-info">雙字問心：先寫「{{ case.char or "？" }}」（{{ case.choice_a or "尚未填寫" }}），後寫「{{ case.char2 or "？" }}」（{{ case.choice_b or "尚未填寫" }}）{% if case.pair_preset %}，從常見對字「{{ case.pair_preset }}」點選後書寫{% endif %}</p>{% endif %}
       <p class="case-q" id="question">{{ case.question or "（尚未填寫）" }}</p>
       <p class="case-meta">
         <span class="status-pill" id="status">{{ {"drafting":"書寫中","submitted":"待解","answered":"已解"}[case.status.value] }}</span>
-        {% if case.char and case.char_source != "picked" %}　自述所寫：<b style="font-family:var(--kai);font-size:1.4em">{{ case.char }}</b>{% endif %}
+        {% if case.char and case.char_source != "picked" and case.kind != "pair" %}　自述所寫：<b style="font-family:var(--kai);font-size:1.4em">{{ case.char }}</b>{% endif %}
       </p>
     </section>
 
     <section class="paper answer-box">
       <h2><label for="answer">解字資料</label><span class="only-teacher">只有老師看得到</span></h2>
       <div class="jiezi-bar">
+        {% if case.kind == "pair" %}
+        <label for="jiezi-char">第一字</label>
+        <input type="text" id="jiezi-char" maxlength="2" autocomplete="off" value="{{ case.char }}">
+        <label for="jiezi-char2">第二字</label>
+        <input type="text" id="jiezi-char2" maxlength="2" autocomplete="off" value="{{ case.char2 }}">
+        <button class="btn" type="button" id="jiezi-run">帶出對照資料</button>
+        {% else %}
         <label for="jiezi-char">此字</label>
         <input type="text" id="jiezi-char" maxlength="2" autocomplete="off" value="{{ case.char }}">
         <button class="btn" type="button" id="jiezi-run">帶出字資料</button>
+        {% endif %}
         <button class="btn" type="button" id="jiezi-undo" hidden>復原原文</button>
-        {% if 'yao' in (request.state.features or []) %}<button class="btn" type="button" id="derive-yao" title="梅花易數：用此字的康熙筆畫加時辰起一卦">以此字起卦</button>{% endif %}
+        {% if 'yao' in (request.state.features or []) and case.kind != "pair" %}<button class="btn" type="button" id="derive-yao" title="梅花易數：用此字的康熙筆畫加時辰起一卦">以此字起卦</button>{% endif %}
       </div>
-      {% if 'yao' in (request.state.features or []) %}<p class="hint" id="derive-state">{% if case.derived_yao %}已起參考卦：「{{ case.derived_yao.char }}」{{ case.derived_yao.strokes }} 畫，{{ case.derived_yao.gua }}　<a href="/master/yao/paipan?v={{ case.derived_yao["values"]|join('') }}&t={{ case.derived_yao.when }}&zi=1" target="_blank" rel="noopener" id="derive-open">看卦盤</a>{% endif %}</p>{% endif %}
-      <p class="hint" id="jiezi-state">部首、筆畫、五行與《說文解字》由字庫帶出；字義與解讀為 AI 草稿，請審閱後再送出。</p>
+      {% if 'yao' in (request.state.features or []) and case.kind != "pair" %}<p class="hint" id="derive-state">{% if case.derived_yao %}已起參考卦：「{{ case.derived_yao.char }}」{{ case.derived_yao.strokes }} 畫，{{ case.derived_yao.gua }}　<a href="/master/yao/paipan?v={{ case.derived_yao["values"]|join('') }}&t={{ case.derived_yao.when }}&zi=1" target="_blank" rel="noopener" id="derive-open">看卦盤</a>{% endif %}</p>{% endif %}
+      <p class="hint" id="jiezi-state">{% if case.kind == "pair" %}兩字的部首、筆畫、五行生剋、字義與書寫對照由字庫帶出，並附偏向提示；字義對比與解讀為 AI 草稿，請審閱後再送出。{% else %}部首、筆畫、五行與《說文解字》由字庫帶出；字義與解讀為 AI 草稿，請審閱後再送出。{% endif %}</p>
       <textarea id="answer" data-auto="{{ '1' if (not case.notes and not case.answer and not case.draft) else '' }}">{% if case.notes %}{{ case.notes }}{% elif case.answer %}【解讀】
-{{ case.answer }}{% elif case.draft %}{{ case.draft }}{% else %}【此字】
+{{ case.answer }}{% elif case.draft %}{{ case.draft }}{% elif case.kind == "pair" %}【此二字】
+
+【書寫對照】
+
+【五行生剋】
+
+【字義對照】
+
+【偏向提示】
+
+【解讀】
+{% else %}【此字】
 
 【五行】
 
@@ -158,7 +220,7 @@
 {% block scripts %}
 <script defer src="/static/js/rte-swatch.js?v={{ asset_v }}"></script>
 <script type="module" src="/static/js/master-case.js?v={{ asset_v }}"></script>
-{% if 'yao' in (request.state.features or []) %}<script type="module">
+{% if 'yao' in (request.state.features or []) and case.kind != "pair" %}<script type="module">
   // 以字起卦（梅花易數）：結果在新分頁的排盤工具打開
   const btn = document.getElementById("derive-yao");
   btn?.addEventListener("click", async () => {

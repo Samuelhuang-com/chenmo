@@ -9,6 +9,7 @@
     <div class="home-doors">
       <a class="btn btn-zhu" href="/ask">寫字問事</a>
       {% if 'yao' in (request.state.features or []) %}<a class="btn btn-tong" href="/yao">六龍問爻</a>{% endif %}
+      {% if 'pair' in (request.state.features or []) %}<a class="btn btn-dai" href="/pair">雙字問心</a>{% endif %}
     </div>
     <div class="install" id="install" hidden>
       <button class="btn on-yan" type="button" id="install-btn">安裝到手機主畫面</button>

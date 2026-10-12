@@ -24,6 +24,7 @@
   </section>{% endif %}
   {% if student %}<p class="as-who">以 {{ student.name }} 的身分問字。<a href="/me">我的問字</a></p>
   {% elif settings.google_login_enabled %}<p class="as-who">不登入也可以問字。想保存紀錄、日後查看老師的解讀，請<a href="/me/login?next=/ask">先用 Google 登入</a>。</p>{% endif %}
+  {% if 'pair' in (request.state.features or []) and not redo and not follow %}<p class="pair-door">在兩個方向之間拿不定主意？試試<a href="/pair">雙字問心</a>：寫下兩個字（例如「去、留」），老師把兩個字放在一起看。</p>{% endif %}
 
   <section class="paper">
     <h2>問事者</h2>
@@ -50,8 +51,9 @@
 
   <section class="paper">
     <h2><label for="question">所問何事</label></h2>
-    <p class="hint">一百字以內，說清楚想問的方向即可。</p>
-    <textarea id="question" rows="3" data-max="{{ max_chars }}" placeholder="例如：今年想換工作，時機是否合適？"></textarea>
+    <p class="hint">一百字以內，一次問一件事。問得越具體，老師的解讀越能聚焦。</p>
+    <p class="hint">例如把「我適合換工作嗎？」改問「明年三月提離職，時機合適嗎？」或「手上這個機會值得接嗎？」</p>
+    <textarea id="question" rows="3" data-max="{{ max_chars }}" placeholder="例如：想在明年三月換工作，現在提離職的時機是否合適？"></textarea>
     <div class="counter" id="counter" aria-live="polite">0 / {{ max_chars }}</div>
   </section>
 
@@ -85,6 +87,8 @@
       <label for="char" id="char-help">寫的是哪個字？選填，可幫助老師辨識。</label>
     </div>
   </section>
+
+  <p class="hint ask-expect">老師的解讀是對處境與時機的判斷，供你做決定時參考，並非保證結果；最後的決定仍在你。</p>
 
   <div class="submit-row">
     <span class="conn" id="conn" data-state="idle">落筆後即與老師連線</span>

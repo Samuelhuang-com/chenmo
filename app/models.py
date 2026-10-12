@@ -6,7 +6,7 @@ import time
 import uuid
 from enum import Enum
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 
 def now_ms() -> int:
@@ -75,6 +75,11 @@ class Case(BaseModel):
     verify_note: str = ""
     verified_at: int | None = None
     derived_yao: dict = Field(default_factory=dict)   # 問字案件「以字起卦」的參考卦
+    # ---- 雙字問心（kind = "pair"）：char 是第一個寫的字，char2 是第二個 ----
+    char2: str = ""
+    choice_a: str = ""                   # 第一字代表的選擇（必填）
+    choice_b: str = ""                   # 第二字代表的選擇（必填）
+    pair_preset: str = ""                # 從「常見對字」點選的那一組（例「去留」）；空＝自己想的
 
     @computed_field
     @property
@@ -95,7 +100,8 @@ class Case(BaseModel):
                                         "created_at", "submitted_at", "answered_at", "answer",
                                         "rewrite_requested_at", "rewrite_reason", "reading_edited_at",
                                         "answer_html", "kind", "asked_for", "category",
-                                        "yao_values", "cast_at", "gua"})
+                                        "yao_values", "cast_at", "gua",
+                                        "char2", "choice_a", "choice_b"})
 
 
 ZODIAC = "鼠牛虎兔龍蛇馬羊猴雞狗豬"
@@ -164,13 +170,67 @@ class SubmitIn(BaseModel):
         return v
 
 
+PAIR_CHOICE_MAX = 30
+
+
+class PairSubmitIn(BaseModel):
+    """雙字問心：兩個字、各自代表的選擇都必填。"""
+    question: str
+    char_a: str
+    char_b: str
+    choice_a: str
+    choice_b: str
+    birth_year: int
+    gender: str
+    nickname: str = Field(default="", max_length=30)
+    preset: str = Field(default="", max_length=8)
+
+    _q = field_validator("question")(SubmitIn._q.__func__)
+    _by = field_validator("birth_year")(SubmitIn._by.__func__)
+    _g = field_validator("gender")(SubmitIn._g.__func__)
+    _nn = field_validator("nickname")(SubmitIn._nn.__func__)
+
+    @field_validator("char_a", "char_b")
+    @classmethod
+    def _one_char(cls, v: str) -> str:
+        v = v.strip()
+        if code_point_len(v) != 1:
+            raise ValueError("兩個字都要填，而且各只填一個字")
+        return v
+
+    @field_validator("choice_a", "choice_b")
+    @classmethod
+    def _choice(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if not v:
+            raise ValueError("請寫下每個字代表的選擇")
+        if code_point_len(v) > PAIR_CHOICE_MAX:
+            raise ValueError(f"每個字代表的選擇請在 {PAIR_CHOICE_MAX} 字以內")
+        return v
+
+    @model_validator(mode="after")
+    def _differ(self) -> "PairSubmitIn":
+        if self.char_a == self.char_b:
+            raise ValueError("兩個字請寫不同的字")
+        return self
+
+
 class RewriteIn(BaseModel):
     reason: str = Field(default="", max_length=200)
 
 
 class JieziIn(BaseModel):
     char: str = Field(min_length=1, max_length=2)
+    char2: str = Field(default="", max_length=2)   # 雙字問心的第二字（問字、問爻不用）
     refresh: bool = False                # true：忽略快取重新產生
+
+    @field_validator("char2")
+    @classmethod
+    def _one2(cls, v: str) -> str:
+        v = v.strip()
+        if v and code_point_len(v) != 1:
+            raise ValueError("第二字請輸入一個字")
+        return v
 
     @field_validator("char")
     @classmethod

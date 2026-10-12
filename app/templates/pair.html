@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}雙字問心｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/">首頁</a><a href="/ask">問字</a>{% endblock %}
+{% block main %}
+<div class="ask-wrap pair-wrap">
+  <h1 class="ask-title">雙字問心</h1>
+  <p class="beta-badge">封測中・僅受邀者可見</p>
+{% if need_login %}
+  <section class="paper login-gate">
+    <h2>先登入，再問事</h2>
+    <a class="btn btn-zhu" href="/me/login?next=/pair">用 Google 帳號登入</a>
+  </section>
+{% else %}
+  {% if note and note.kind == "redo" %}<section class="paper redo-note">
+    <h2>老師請你重寫這兩個字</h2>
+    <p>{{ note.reason or "上一次的字跡看不太清楚，請再寫一次。" }}</p>
+    <p class="hint">問題、兩個字與各自代表的選擇已幫你帶入，確認後重新書寫再呈送即可。</p>
+  </section>{% elif note and note.kind == "follow" %}<section class="paper redo-note follow-note">
+    <h2>接著追問</h2>
+    <p class="hint">上一題：{{ note.prev }}</p>
+  </section>{% endif %}
+  {% if student %}<p class="as-who">以 {{ student.name }} 的身分問事。<a href="/me">我的問字</a></p>
+  {% elif settings.google_login_enabled %}<p class="as-who">不登入也可以問事。想保存紀錄，請<a href="/me/login?next=/pair">先用 Google 登入</a>。</p>{% endif %}
+
+  <div id="pair-form" data-redo="{{ prefill.redo_of or '' }}" data-follow="{{ prefill.follow_of or '' }}">
+  <section class="paper">
+    <h2>問事者</h2>
+    <div class="profile">
+      <div class="field">
+        <label for="nickname">姓氏／暱稱／英文名</label>
+        <input type="text" id="nickname" maxlength="30" autocomplete="off" placeholder="例如：王、小明、Amy" value="{{ prefill.nickname or '' }}">
+        <span class="hint">讓老師知道怎麼稱呼你，不必寫全名。</span>
+      </div>
+      <div class="field">
+        <label for="birth_year">年次</label>
+        <span class="roc">民國 <input type="number" id="birth_year" inputmode="numeric" min="1" max="{{ roc_now }}" placeholder="75" value="{{ prefill.birth_year or '' }}" aria-describedby="by-detail"> 年次</span>
+        <span class="hint" id="by-detail"></span>
+      </div>
+      <fieldset class="field">
+        <legend>性別</legend>
+        <span class="seg">
+          <input type="radio" name="gender" id="g-m" value="男" {% if prefill.gender == "男" %}checked{% endif %}><label for="g-m">男</label>
+          <input type="radio" name="gender" id="g-f" value="女" {% if prefill.gender == "女" %}checked{% endif %}><label for="g-f">女</label>
+        </span>
+      </fieldset>
+    </div>
+  </section>
+
+  <section class="paper">
+    <h2><label for="question">在猶豫什麼</label></h2>
+    <p class="hint">一百字以內，說說你在哪兩個方向之間拿不定主意。</p>
+    <p class="hint">例如：「手上有新工作的機會，但現在的團隊待得很習慣，要去還是留？」</p>
+    <textarea id="question" rows="3" data-max="{{ max_chars }}" placeholder="例如：有新工作的機會，要去還是留？">{{ prefill.question or '' }}</textarea>
+    <div class="counter" id="counter" aria-live="polite">0 / {{ max_chars }}</div>
+  </section>
+
+  <section class="paper">
+    <h2>兩個字</h2>
+    <p class="hint">用兩個字代表你心中的兩個方向，例如「去、留」「進、退」「動、靜」。想不到的話，可以點一組常見的對字，再自己寫下來。</p>
+    <div class="pick-themes pair-presets" id="presets" role="group" aria-label="常見對字（可不選）">
+      {% for p in presets %}<button type="button" data-preset="{{ p }}" aria-pressed="false">{{ p[0] }}・{{ p[1] }}</button>{% endfor %}
+    </div>
+  </section>
+
+  {% for i in (0, 1) %}{% set k = "ab"[i] %}
+  <section class="paper pair-step" id="step-{{ k }}">
+    <h2>{{ "第一字" if i == 0 else "第二字" }}<span class="pair-order">{{ "先寫心裡先浮現的那個" if i == 0 else "再寫另一個方向" }}</span></h2>
+    <div class="pair-meta">
+      <div class="field">
+        <label for="char-{{ k }}">這是哪個字</label>
+        <input type="text" id="char-{{ k }}" class="pair-char" maxlength="2" autocomplete="off" value="{{ prefill['char_' ~ k] or '' }}" required>
+      </div>
+      <div class="field pair-choice">
+        <label for="choice-{{ k }}">這個字代表的選擇</label>
+        <input type="text" id="choice-{{ k }}" maxlength="{{ choice_max }}" autocomplete="off" required
+               placeholder="{{ '例如：接受新工作' if i == 0 else '例如：留在現在的公司' }}" value="{{ prefill['choice_' ~ k] or '' }}">
+      </div>
+    </div>
+    <div class="pad-box grid-paper pair-pad" id="pad-box-{{ k }}">
+      <canvas id="pad-{{ k }}" aria-label="{{ '第一字' if i == 0 else '第二字' }}手寫字格"></canvas>
+      <div class="pad-lock" aria-hidden="true"><span>{{ "請把字格完整滑進畫面再開始書寫" }}</span></div>
+    </div>
+    <div class="pad-tools">
+      <button class="btn" type="button" data-undo="{{ i }}">復原上一筆</button>
+      <button class="btn" type="button" data-clear="{{ i }}">清除重寫</button>
+    </div>
+  </section>
+  {% endfor %}
+
+  <p class="hint ask-expect">老師會把兩個字放在一起看，幫你釐清心裡的方向；解讀是對處境與時機的判斷，供你參考，最後的決定仍在你。</p>
+
+  <div class="submit-row">
+    <span class="conn" id="conn" data-state="idle">落筆後即與老師連線</span>
+    <button class="btn btn-zhu" type="button" id="submit">呈送</button>
+  </div>
+  <p class="form-error" id="error" role="alert"></p>
+  </div>
+{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+{% if not need_login %}<script type="module" src="/static/js/pair.js?v={{ asset_v }}"></script>{% endif %}
+{% endblock %}

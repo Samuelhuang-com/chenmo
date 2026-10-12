@@ -54,6 +54,10 @@ async def get_case(token: str):
     if not case:
         raise HTTPException(404, "查無此案件")
     events = await repo.list_events(case.id)
+    if case.kind == "pair":   # 雙字問心：兩個字格分開
+        from app.services.strokes import pad_events
+        return {"case": case.public_dict(), "strokes": visible_strokes(pad_events(events, 0)),
+                "strokes2": visible_strokes(pad_events(events, 1))}
     return {"case": case.public_dict(), "strokes": visible_strokes(events)}
 
 
@@ -91,6 +95,8 @@ async def submit_case(token: str, body: SubmitIn, request: Request):
     repo = get_repo()
     case = await repo.get_by_token(token)
     if not case:
+        raise HTTPException(404, "查無此案件")
+    if case.kind != "char":
         raise HTTPException(404, "查無此案件")
     if case.status != CaseStatus.drafting:
         raise HTTPException(409, "此案件已送出")

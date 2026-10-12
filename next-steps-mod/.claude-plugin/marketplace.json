@@ -1,0 +1,7 @@
+{
+  "name": "samuel-mods",
+  "owner": { "name": "Samuel" },
+  "plugins": [
+    { "name": "next-steps-mod", "source": "./", "description": "Suggests up to three next prompts after each turn." }
+  ]
+}

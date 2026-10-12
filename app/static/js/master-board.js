@@ -37,9 +37,10 @@ function ticket(c) {
   if (c.kind === "yao") return yaoTicket(c);
   const isLive = c.status === "drafting" && Date.now() - (live.get(c.id) || 0) < 15000;
   const time = c.status === "answered" ? c.answered_at : c.status === "submitted" ? c.submitted_at : c.updated_at;
+  const pair = c.kind === "pair";   // 雙字問心：兩個字並列
   return `<a class="ticket${isLive ? " live" : ""}" href="/master/case/${c.id}">
-    <div class="t-char grid-paper">${esc(c.char) || ""}</div>
-    <div><p class="t-q">${esc(c.question) || "（尚未填寫問題）"}${c.char_source === "picked" ? '<span class="tag-pick">自選</span>' : ""}</p>
+    <div class="t-char grid-paper${pair ? " t-pair" : ""}">${pair ? esc(c.char) + esc(c.char2) : esc(c.char) || ""}</div>
+    <div><p class="t-q">${pair ? '<span class="tag-pair">雙</span>' : ""}${esc(c.question) || "（尚未填寫問題）"}${c.char_source === "picked" ? '<span class="tag-pick">自選</span>' : ""}</p>
     <div class="t-meta">${c.nickname ? "<b>" + esc(c.nickname) + "</b>　" : ""}${c.profile_text ? esc(c.profile_text.replace(/（.*?）/, "")) + "，" : ""}${c.stroke_count} 筆，${fmt(time)}</div></div></a>`;
 }
 

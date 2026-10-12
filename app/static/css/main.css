@@ -638,3 +638,47 @@ textarea:focus, input:focus { outline: none; border-color: var(--zhu); backgroun
 .cs-warn { margin: 0 0 10px; padding: 8px 10px; border-left: 3px solid var(--zhu); background: rgba(178,58,46,.08); color: var(--zhu-deep); font-size: .92rem; }
 .cs-check { display: block; margin: 8px 0; cursor: pointer; }
 .cs-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+/* 問字頁：期待說明（卡片外的一行小字） */
+.ask-expect { color: var(--mo-soft); font-size: var(--step--1); text-align: center; margin: 4px 0 14px; }
+
+/* ---- 雙字問心 ---- */
+.pair-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pair-presets button { font-family: var(--kai); font-size: var(--step-0, 1rem); }
+.pair-order { margin-left: 10px; font-size: var(--step--1); color: var(--mo-soft); font-weight: 400; letter-spacing: 0; }
+.pair-meta { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; margin-bottom: 14px; }
+.pair-meta .field { display: grid; gap: 6px; }
+.pair-meta label { font-size: var(--step--1); color: var(--mo-soft); }
+.pair-meta .pair-char { width: 3.2em; text-align: center; font-family: var(--kai); font-size: var(--step-2); padding: 4px; }
+.pair-meta .pair-choice { flex: 1 1 200px; }
+.pair-meta .pair-choice input { width: 100%; }
+.pair-pad.locked, .pair-pad.locked canvas { touch-action: pan-y; }
+.pair-pad.locked .pad-lock { display: flex; }
+/* 問事者結果頁：兩字並排 */
+.pair-show { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+.pair-show figure { margin: 0; text-align: center; }
+.pair-show .case-pad { width: 100%; margin: 0; }
+.pair-show figcaption { margin-top: 6px; font-size: var(--step--1); color: var(--mo-soft); line-height: 1.5; }
+.pair-show figcaption b { display: block; font-family: var(--kai); font-size: var(--step-2); color: var(--mo); font-weight: 400; }
+/* 老師端：兩字並排、偏向提示 */
+.bench-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bench-pair .bench-pad { cursor: pointer; outline: 2px solid transparent; outline-offset: 2px; }
+.bench-pair .bench-pad.active { outline-color: var(--zhu); }
+.bench-pair figcaption { text-align: center; font-size: var(--step--1); color: var(--mo-soft); margin-top: 4px; }
+.bench-pair figcaption b { font-family: var(--kai); font-size: 1.4em; color: var(--mo); font-weight: 400; }
+.pair-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pair-facts h3 { margin: 0 0 4px; font-family: var(--kai); font-weight: 400; }
+.pair-lean { margin: 0; padding-left: 1.2em; line-height: 1.7; }
+.pair-lean .to { color: var(--zhu); }
+.pair-lean-sum { margin: 8px 0 0; font-weight: 600; }
+.ticket .t-char.t-pair { font-size: 24px; letter-spacing: 0; }
+.tag-pair { display: inline-block; margin-right: 6px; padding: 0 6px; font-size: 12px; border: 1px solid var(--zhu); color: var(--zhu); }
+@media (max-width: 420px) { .pair-facts { grid-template-columns: 1fr; } }
+.h-item .t-char.t-pair { font-size: 26px; letter-spacing: 0; }
+.pair-door { font-size: var(--step--1); color: var(--tai); margin: -8px 0 16px; line-height: 1.7; }
+.pair-door a { color: var(--xuan); }
+.pair-wrap .ask-expect { color: var(--tai); }
+/* 首頁「雙字問心」：黛青底（與朱紅、銅金並列） */
+.btn-dai { background: #3f6f73; border-color: #3f6f73; color: var(--xuan);
+  font-family: var(--kai); font-size: var(--step-1); letter-spacing: .4em; padding: 10px 28px 10px 34px; }
+.btn-dai:hover { background: #2f5659; border-color: #2f5659; color: var(--xuan); }

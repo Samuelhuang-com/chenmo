@@ -15,16 +15,49 @@ const STATUS = { drafting: "書寫中", submitted: "待解", answered: "已解" 
 let events = [];
 let lastLive = 0;
 
-const player = new Player($("pad"), {
-  onTick: (frac, playing) => {
-    $("progress").value = Math.round(frac * 1000);
-    $("play").textContent = playing ? "暫停" : "播放";
-  },
+// 雙字問心：兩個字格（第一字 pad、第二字 pad2），事件用 pad 區分；重播控制對著「目前選取」的字格
+const isPair = !!$("pad2");
+const padOf = e => (e.pad === 1 ? 1 : 0);
+const evOf = p => (isPair ? events.filter(e => padOf(e) === p) : events);
+const players = [];
+let active = 0;
+function makePlayer(canvas, idx) {
+  return new Player(canvas, {
+    onTick: (frac, playing) => {
+      if (idx !== active) return;
+      $("progress").value = Math.round(frac * 1000);
+      $("play").textContent = playing ? "暫停" : "播放";
+    },
+  });
+}
+players.push(makePlayer($("pad"), 0));
+if (isPair) players.push(makePlayer($("pad2"), 1));
+const player = {   // 重播控制都轉給目前選取的字格
+  get cur() { return players[active]; },
+  get playing() { return this.cur.playing; },
+  play() { this.cur.play(); }, pause() { this.cur.pause(); },
+  stepStroke(d) { this.cur.stepStroke(d); }, seek(f) { this.cur.seek(f); },
+  set speed(v) { players.forEach(p => { p.speed = v; }); },
+  set numbers(v) { players.forEach(p => { p.numbers = v; }); },
+  render() { players.forEach(p => p.render()); },
+  setErased(v) { players.forEach((p, i) => { p.includeErased = v; p.load(evOf(i)); }); },
+  load() { players.forEach((p, i) => p.load(evOf(i))); },
+};
+if (isPair) document.querySelectorAll(".bench-pair .bench-pad").forEach(box => box.onclick = () => {
+  players[active].pause();
+  active = +box.dataset.pad;
+  document.querySelectorAll(".bench-pair .bench-pad").forEach(b => b.classList.toggle("active", b === box));
+  $("pair-active").textContent = `重播控制目前對著${active ? "第二字" : "第一字"}；點一下另一個字格就切換。`;
+  players[active].render();
 });
 
 function sec(ms) { return (ms / 1000).toFixed(1) + " 秒"; }
 
 function renderFacts() {
+  renderFactsOf(evOf(0), "facts", "stroke-rows");
+  if (isPair) renderFactsOf(evOf(1), "facts2", "stroke-rows2");
+}
+function renderFactsOf(events, factsId, rowsId) {
   const strokes = visibleStrokes(events);
   const erased = events.filter(e => e.type === "undo" || e.type === "clear").length;
   const rows = [];
@@ -39,18 +72,48 @@ function renderFacts() {
     const last = strokes[strokes.length - 1];
     total = last.t0 + strokeDuration(last) - strokes[0].t0;
   }
-  $("facts").innerHTML = `
+  $(factsId).innerHTML = `
     <dt>筆數</dt><dd>${strokes.length} 筆</dd>
     <dt>書寫歷時</dt><dd>${strokes.length ? sec(total) : "—"}</dd>
     <dt>最長停頓</dt><dd>${strokes.length > 1 ? sec(longest) : "—"}</dd>
     <dt>擦除</dt><dd>${erased ? `復原或清除 ${erased} 次` : "無"}</dd>`;
-  $("stroke-rows").innerHTML = rows.join("");
+  $(rowsId).innerHTML = rows.join("");
 }
 
 function refresh() {
-  const following = player.time >= player.tl.total - 1 && !player.playing;
-  player.load(events, { keepTime: !following });
+  players.forEach((p, i) => {
+    const following = p.time >= p.tl.total - 1 && !p.playing;
+    p.load(evOf(i), { keepTime: !following });
+  });
   renderFacts();
+  if (isPair) schedulePairSummary();
+}
+
+// ---- 雙字問心：書寫先後與偏向提示（由伺服器計算，筆跡變動後稍等再更新） ----
+const escAttr = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function renderPair(c, pr) {
+  if (!isPair) return;
+  if (c) {
+    $("pair-c0").textContent = c.char || ""; $("pair-c1").textContent = c.char2 || "";
+    $("pair-k0").textContent = c.choice_a || ""; $("pair-k1").textContent = c.choice_b || "";
+    if (c.char && c.char2) $("pair-info").textContent =
+      `雙字問心：先寫「${c.char}」（${c.choice_a}），後寫「${c.char2}」（${c.choice_b}）` +
+      (c.pair_preset ? `，從常見對字「${c.pair_preset}」點選後書寫` : "");
+  }
+  if (!pr) return;
+  const name = i => { const ch = i ? (c?.char2 || $("pair-c1").textContent) : (c?.char || $("pair-c0").textContent); return ch ? `「${ch}」` : (i ? "第二字" : "第一字"); };
+  $("pair-order").textContent = pr.order;
+  $("pair-lean").innerHTML = pr.signals.map(s =>
+    `<li><b>${escAttr(s.topic)}</b>　<span class="to">${s.lean === null ? "相當" : "偏" + escAttr(name(s.lean))}</span>：${escAttr(s.reason)}</li>`).join("");
+  $("pair-lean-sum").textContent = "合計：" + pr.lean_text;
+}
+let pairTimer = 0;
+function schedulePairSummary() {
+  clearTimeout(pairTimer);
+  pairTimer = setTimeout(async () => {
+    const r = await fetch(`/api/master/cases/${caseId}`);
+    if (r.ok) { const d = await r.json(); renderPair(d.case, d.pair); }
+  }, 1500);
 }
 
 let caseStatus = "";
@@ -86,14 +149,16 @@ let beforeJiezi = null;
 async function runJiezi(refresh = false) {
   if ($("jiezi-run").disabled) return;
   const ch = $("jiezi-char").value.trim();
-  if ([...ch].length !== 1) { $("jiezi-state").textContent = "請先在「此字」欄填入一個字。"; $("jiezi-char").focus(); return; }
+  if ([...ch].length !== 1) { $("jiezi-state").textContent = isPair ? "請在「第一字」欄填入一個字。" : "請先在「此字」欄填入一個字。"; $("jiezi-char").focus(); return; }
+  const ch2 = isPair ? $("jiezi-char2").value.trim() : "";
+  if (isPair && [...ch2].length !== 1) { $("jiezi-state").textContent = "請在「第二字」欄填入一個字。"; $("jiezi-char2").focus(); return; }
   const btn = $("jiezi-run");
   btn.disabled = true;
   $("jiezi-state").textContent = "正在查字庫並產生草稿，約需十餘秒…";
   try {
     const r = await fetch(`/api/master/cases/${caseId}/jiezi`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ char: ch, refresh }),
+      body: JSON.stringify(isPair ? { char: ch, char2: ch2, refresh } : { char: ch, refresh }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(Array.isArray(d.detail) ? d.detail.map(x => x.msg.replace(/^Value error, /, "")).join("；") : (d.detail || "帶出失敗"));
@@ -116,7 +181,7 @@ async function runJiezi(refresh = false) {
   }
 }
 function maybeAutoJiezi() {
-  if ($("answer").dataset.auto === "1" && $("jiezi-char").value.trim() && caseStatus !== "drafting") runJiezi();
+  if ($("answer").dataset.auto === "1" && $("jiezi-char").value.trim() && (!isPair || $("jiezi-char2").value.trim()) && caseStatus !== "drafting") runJiezi();
 }
 $("jiezi-run").onclick = () => runJiezi($("jiezi-run").dataset.refresh === "1");
 $("jiezi-undo").onclick = () => {
@@ -136,9 +201,11 @@ async function load() {
   showPick(d.case);
   currentCase = d.case;
   setStatus(d.case.status, d.case);
-  player.load(events);
+  player.load();
   renderFacts();
+  renderPair(d.case, d.pair);
   if (!$("jiezi-char").value && d.case.char) $("jiezi-char").value = d.case.char;
+  if (isPair && !$("jiezi-char2").value && d.case.char2) $("jiezi-char2").value = d.case.char2;
   maybeAutoJiezi();
 }
 
@@ -164,6 +231,11 @@ new Socket("/ws/master", msg => {
     currentCase = msg.case;
     if (msg.case.rewrite_requested_at) $("rewrite-state").textContent = "已請問事者重寫，等待新的字。";
     if (!$("jiezi-char").value && msg.case.char) $("jiezi-char").value = msg.case.char;
+    if (isPair) {
+      if (!$("jiezi-char2").value && msg.case.char2) $("jiezi-char2").value = msg.case.char2;
+      renderPair(msg.case, null);
+      if (msg.case.status !== "drafting") schedulePairSummary();
+    }
     if (msg.case.profile_text) $("profile").textContent = profileLine(msg.case);
     showPick(msg.case);
     return setStatus(msg.case.status, msg.case);
@@ -174,12 +246,12 @@ new Socket("/ws/master", msg => {
   $("live-tag").textContent = "問事者正在書寫";
   switch (msg.type) {
     case "stroke_start": {
-      const ev = { type: "stroke", seq: msg.seq, t0: msg.t0, points: [] };
+      const ev = { type: "stroke", seq: msg.seq, t0: msg.t0, points: [], ...(msg.pad === 1 ? { pad: 1 } : {}) };
       liveStrokes.set(msg.seq, ev); events.push(ev); break;
     }
     case "stroke_points": liveStrokes.get(msg.seq)?.points.push(...msg.points); break;
     case "stroke_end": liveStrokes.delete(msg.seq); break;
-    case "undo": case "clear": events.push({ type: msg.type }); break;
+    case "undo": case "clear": events.push({ type: msg.type, ...(msg.pad === 1 ? { pad: 1 } : {}) }); break;
     case "question": $("question").textContent = msg.text || "（尚未填寫）"; return;
     case "profile": $("profile").textContent = profileLine({ nickname: msg.nickname ?? nickNow, profile_text: msg.text }); return;
     case "pick": showPick({ char_source: "picked", char: msg.char, offered: msg.offered, pick_rounds: msg.rounds, pick_theme: msg.theme }); return;
@@ -319,15 +391,16 @@ $("send").onclick = async () => {
     // 送出前確認：讓老師再核對一次這份解讀是寫給誰；顯示的資料以伺服器最新狀態為準
     if (!currentCase) await load();
     const c = currentCase || {};
-    const asked = [...(c.char || "").trim()][0] || "";
+    const asked = isPair ? "" : [...(c.char || "").trim()][0] || "";
     const secChar = ($("answer").value.match(/^【此字】[ \t]*\r?\n\s*(\S)/mu) || [])[1] || "";
     const mismatch = !!(asked && secChar && asked !== secChar);
     const mailOn = !!$("email-student")?.checked && !!c.owner_email;
     const go = await confirmSend({
       rows: [
         ["問事者", [c.nickname, c.profile_text].filter(Boolean).join("　")],
+        ...(isPair ? [["所寫的兩字", `先「${c.char || "？"}」（${c.choice_a || ""}），後「${c.char2 || "？"}」（${c.choice_b || ""}）`]] : [
         ["所寫的字", asked ? `「${asked}」${c.char_source === "picked" ? "（自選字）" : ""}` : "（未填）"],
-        ["解字稿的字", secChar ? `「${secChar}」` : "（【此字】沒有內容）"],
+        ["解字稿的字", secChar ? `「${secChar}」` : "（【此字】沒有內容）"]]),
         ["所問", trunc(c.question, 40)],
         ["寄信", mailOn ? `寄給 ${c.owner_email}` : "不寄信（問事者要自己從連結查看）"],
         ["解讀開頭", trunc(publicReading(), 40)],

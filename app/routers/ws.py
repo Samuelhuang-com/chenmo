@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.models import CaseStatus, code_point_len, now_ms
 from app.repositories import get_repo
 from app.services.realtime import hub
-from app.services.strokes import clean_points, visible_strokes
+from app.services.strokes import clean_points, visible_count
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -33,15 +33,18 @@ async def user_ws(ws: WebSocket, token: str):
     hub.add_user(token, ws)
 
     pending: dict[int, dict] = {}       # 書寫中、尚未存檔的筆
-    stroke_total = len(visible_strokes(await repo.list_events(case.id)))
+    stroke_total = visible_count(await repo.list_events(case.id))
+    two_pads = case.kind == "pair"   # 雙字問心：訊息帶 pad（0＝第一字、1＝第二字）
 
     async def persist(seq: int) -> None:
         nonlocal stroke_total
         st = pending.pop(seq, None)
         if not st or not st["points"]:
             return
-        await repo.append_event(case.id, {"type": "stroke", "seq": seq, "t0": st["t0"],
-                                          "points": st["points"], "ts": now_ms()})
+        ev = {"type": "stroke", "seq": seq, "t0": st["t0"], "points": st["points"], "ts": now_ms()}
+        if st.get("pad"):
+            ev["pad"] = 1
+        await repo.append_event(case.id, ev)
         stroke_total += 1
         await repo.update(case.id, stroke_count=stroke_total)
 
@@ -68,6 +71,7 @@ async def user_ws(ws: WebSocket, token: str):
                     continue
 
             out: dict | None = None
+            pad = 1 if two_pads and msg.get("pad") == 1 else 0
             if t == "question":
                 text = str(msg.get("text", ""))[: s.question_max_chars]
                 if code_point_len(text) <= s.question_max_chars:
@@ -111,7 +115,7 @@ async def user_ws(ws: WebSocket, token: str):
                 if stroke_total + len(pending) >= s.max_strokes:
                     await ws.send_json({"type": "error", "message": "筆畫過多，請清除重寫"})
                     continue
-                pending[seq] = {"t0": int(msg.get("t0") or now_ms()), "points": []}
+                pending[seq] = {"t0": int(msg.get("t0") or now_ms()), "points": [], "pad": pad}
                 out = {"type": "stroke_start", "seq": seq, "t0": pending[seq]["t0"]}
 
             elif t == "stroke_points":
@@ -130,12 +134,14 @@ async def user_ws(ws: WebSocket, token: str):
                 out = {"type": "stroke_end", "seq": seq}
 
             elif t in ("undo", "clear"):
-                await repo.append_event(case.id, {"type": t, "ts": now_ms()})
-                stroke_total = len(visible_strokes(await repo.list_events(case.id)))
+                await repo.append_event(case.id, {"type": t, "ts": now_ms(), **({"pad": 1} if pad else {})})
+                stroke_total = visible_count(await repo.list_events(case.id))
                 await repo.update(case.id, stroke_count=stroke_total)
                 out = {"type": t}
 
             if out:
+                if pad and t in ("stroke_start", "stroke_points", "stroke_end", "undo", "clear"):
+                    out["pad"] = 1
                 await hub.to_masters({**out, "case_id": case.id})
     except WebSocketDisconnect:
         pass
