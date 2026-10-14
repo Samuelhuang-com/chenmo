@@ -31,6 +31,7 @@ from app.models import now_ms
 FEATURES: dict[str, str] = {
     "yao": "六龍問爻",
     "pair": "雙字問心",
+    "ziwei": "紫微排盤",
 }
 
 CACHE_SECONDS = 60
