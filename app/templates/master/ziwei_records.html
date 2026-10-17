@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}命盤紀錄｜{{ settings.app_name }}{% endblock %}
+{% block nav %}<a href="/master">案前</a><a href="/master/ziwei/paipan">紫微排盤</a><a href="/master/logout">登出</a>{% endblock %}
+{% block nav_me %}{% endblock %}
+{% block nav_master %}{% endblock %}
+{% block main %}
+<style>
+  .zw-rec-row { border: 1px solid #c9b77a; border-radius: 6px; padding: 10px 12px; margin: 8px 0; background: #fffdf5; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+  .zw-rec-row .meta { font-size: 13px; color: #666; margin-top: 2px; }
+  .zw-rec-row .note { font-size: 14px; margin-top: 4px; }
+  .zw-rec-row .acts { display: flex; gap: 6px; }
+</style>
+<section class="paper" style="max-width:820px">
+  <p class="beta-badge">紫微斗數・命盤紀錄（封測）</p>
+  <h2>命盤紀錄</h2>
+  <p><a class="btn btn-zhu" href="/master/ziwei/paipan">＋ 新增命盤</a></p>
+  <form method="post" action="/master/ziwei/ask" class="zw-ask" style="border:1px solid #c9b77a;border-radius:6px;padding:10px 12px;margin:10px 0;background:#fffdf5">
+    <b>占問排盤</b>
+    <p class="hint" style="margin:4px 0">以按下「起盤」的當下時間起盤，問題會與盤面一起存進紀錄。</p>
+    <textarea name="question" rows="2" required maxlength="200" placeholder="例：這次面試會順利嗎？" style="width:100%;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+      <label>問事者性別 <select name="g"><option value="男">男</option><option value="女">女</option></select></label>
+      <button class="btn btn-zhu" type="submit">起盤</button>
+    </div>
+  </form>
+  {% if not recs %}<p class="hint">還沒有紀錄。在排盤頁按「儲存此命盤」即可保存。</p>{% endif %}
+  {% for r in recs %}
+  <div class="zw-rec-row">
+    <div>
+      <b>{{ r.label or "（未命名）" }}</b>{% if r.kind == "占問" %} <span class="hint">占問</span><div class="note">問：{{ r.question }}</div>{% if r.owner %}<div class="meta">提問者：{{ r.owner }}</div>{% endif %}{% endif %}
+      <div class="meta">{{ r.birth.y }}/{{ r.birth.m }}/{{ r.birth.d }} {{ "%02d"|format(r.birth.h) }}:{{ "%02d"|format(r.birth.mi) }}　{{ r.birth.g }}　流年 {{ r.ly }}　｜　更新 {{ r.updated_at|fmt_ms }}{% if r.reading %}　｜　有解讀{% endif %}</div>
+      {% if r.note %}<div class="note">備註：{{ r.note[:60] }}{% if r.note|length > 60 %}…{% endif %}</div>{% endif %}
+    </div>
+    <div class="acts">
+      <a class="btn btn-zhu" href="/master/ziwei/paipan?rid={{ r.id }}">開啟</a>
+      <button type="button" class="btn" data-del="{{ r.id }}">刪除</button>
+    </div>
+  </div>
+  {% endfor %}
+  <p class="hint" id="zw-rec-list-msg"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", async () => {
+    if (!confirm("確定刪除這筆紀錄？刪除後無法復原。")) return;
+    const r = await fetch("/master/ziwei/records/" + btn.dataset.del, { method: "DELETE", credentials: "same-origin" });
+    if (r.ok) btn.closest(".zw-rec-row").remove();
+    else document.getElementById("zw-rec-list-msg").textContent = "刪除失敗";
+  }));
+</script>
+{% endblock %}

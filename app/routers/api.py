@@ -101,6 +101,17 @@ async def submit_case(token: str, body: SubmitIn, request: Request):
     if case.status != CaseStatus.drafting:
         raise HTTPException(409, "此案件已送出")
     events = await repo.list_events(case.id)
+    extra_stroke_count = None
+    if not visible_strokes(events) and body.strokes:
+        # 備援：伺服器沒有收到任何筆畫（例如建立案件時網路不穩，書寫中的筆畫沒能送達），
+        # 就以問事者畫面上的筆跡為準存下來，避免「寫了字卻被說沒寫字」。
+        from app.services.strokes import clean_strokes
+        settings = get_settings()
+        for ev in clean_strokes(body.strokes, settings.max_strokes, settings.max_points_per_stroke):
+            ev["ts"] = now_ms()
+            await repo.append_event(case.id, ev)
+        events = await repo.list_events(case.id)
+        extra_stroke_count = len(visible_strokes(events))
     if body.picked:
         from app.services.pick import theme_label, valid_offer
         if not body.char or not valid_offer(body.offered) or body.char not in body.offered:
@@ -111,6 +122,8 @@ async def submit_case(token: str, body: SubmitIn, request: Request):
         if not visible_strokes(events):
             raise HTTPException(422, "請先在字格中寫下一個字，或按「自選字」選一個字")
         extra = {"char_source": "written", "offered": [], "pick_rounds": 0, "pick_theme": ""}
+    if extra_stroke_count is not None:
+        extra["stroke_count"] = extra_stroke_count
     case = await repo.update(case.id, **extra, question=body.question, char=body.char,
                              birth_year=body.birth_year, gender=body.gender, nickname=body.nickname,
                              status=CaseStatus.submitted, submitted_at=now_ms())

@@ -25,7 +25,19 @@ function ensureCase() {
   }
   return creating;
 }
-function send(msg) { ensureCase().then(() => sock.send(msg)).catch(() => {}); }
+// 尚未送到伺服器的訊息先排在 outbox。建立案件失敗時不可以直接丟掉：
+// 字格上看得到的筆畫若在這裡消失，送出時會變成「沒有字」（422）。
+// 建立成功後依原順序補送。
+let outbox = [];
+function flushOutbox() {
+  if (sock) outbox.splice(0).forEach(m => sock.send(m));
+}
+function send(msg) {
+  outbox.push(msg);
+  if (sock) flushOutbox();
+  // 筆畫的點資料不用觸發建立，等開頭那一筆（stroke_start）或文字、年次等訊息來建立即可
+  else if (msg.type !== "stroke_points" && msg.type !== "stroke_end") ensureCase().then(flushOutbox).catch(() => {});
+}
 
 // ---- 問題描述：以 code point 計數，超過 100 字截斷 ----
 let qTimer = 0;
@@ -230,13 +242,16 @@ $("submit").onclick = async () => {
   btn.disabled = true; btn.textContent = "呈送中";
   try {
     await ensureCase();
+    flushOutbox();                       // 先前因建立失敗而排隊的筆畫，這時補送
     sock.send({ type: "question", text: question });
     await sock.sync(8000);
+    // strokes：畫面上這一刻的筆跡（給伺服器備援；伺服器已收到筆畫時以收到的為準）
+    const strokes = pad.strokes.map(s => ({ t0: s.t0, points: s.points }));
     const r = await fetch(`/api/cases/${token}/submit`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pick
-        ? { question, char: pick.char, birth_year: by, gender: g, nickname: nn, picked: true, offered: pick.offered, rounds: pick.rounds, theme: pick.theme, group: pick.group }
-        : { question, char: ch, birth_year: by, gender: g, nickname: nn }),
+        ? { question, char: pick.char, birth_year: by, gender: g, nickname: nn, picked: true, offered: pick.offered, rounds: pick.rounds, theme: pick.theme, group: pick.group, strokes }
+        : { question, char: ch, birth_year: by, gender: g, nickname: nn, strokes }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {

@@ -7,7 +7,14 @@
 <style>
   .zw-board { background: #fff; color: #111; border: 1px solid #999; font-family: "Microsoft JhengHei", sans-serif; }
   .zw-fit { overflow: hidden; }
-  .zw-fit-in { width: 100%; min-width: 800px; transform-origin: 0 0; }
+  .zw-fit-in { width: 100%; min-width: 852px; transform-origin: 0 0; }
+  .zw-ring { position: relative; padding: 20px 26px; }
+  .zw-dir { position: absolute; font-size: 12px; color: #777; white-space: nowrap; line-height: 1; }
+  .zw-dir.t { top: 3px; transform: translateX(-50%); }
+  .zw-dir.b { bottom: 3px; transform: translateX(-50%); }
+  .zw-dir.l { left: 4px; transform: translateY(-50%); writing-mode: vertical-rl; }
+  .zw-dir.r { right: 4px; transform: translateY(-50%); writing-mode: vertical-rl; }
+  .zw-tblbox { border: 0; }
   .zw-grid { display: grid; grid-template-columns: repeat(4, minmax(190px, 1fr)); position: relative; }
   .zw-lines { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
   .zw-lines line { stroke: #d32f2f; stroke-width: 1.8; stroke-dasharray: 6 4; }
@@ -18,7 +25,7 @@
   .zw-aux { color: #1565c0; font-size: 12px; }
   .zw-row { display: flex; flex-wrap: wrap; gap: 3px 4px; align-items: flex-start; }
   .zw-col { display: inline-flex; flex-direction: column; align-items: center; font-size: 12px; line-height: 1.1; color: #1565c0; position: relative; }
-  .zw-col.zw-major { font-size: 15px; font-weight: 700; color: #111; margin-right: 3px; }
+  .zw-col.zw-major { font-size: 15px; font-weight: 700; color: #d32f2f; margin-right: 3px; }
   .zw-col.bad { color: #d32f2f; }
   .zw-col .zw-hua { margin: 1px 0 0; }
   .zw-hua { display: inline-block; background: #d32f2f; color: #fff; font-size: 11px; padding: 0 2px; margin-left: 1px; border-radius: 2px; vertical-align: 1px; }
@@ -70,12 +77,31 @@
   .zw-tbl-liu.on { background: #fff3cf; }
   .zw-tbl a { color: inherit; text-decoration: none; display: block; }
   .zw-liuhua { color: #b87800; font-size: 11px; font-weight: 700; margin-left: 3px; }
+  .zw-rec { margin: 10px 0; border: 1px solid #c9b77a; border-radius: 6px; padding: 10px 12px; background: #fffdf5; }
+  .zw-rec-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .zw-rec-bar input { max-width: 14em; }
+  .zw-rec-note { display: block; margin-top: 8px; }
+  .zw-rec-note textarea { width: 100%; display: block; box-sizing: border-box; }
   .zw-sanfang { margin-top: 8px; font-size: 14px; min-height: 22px; }
   .zw-sanfang b { color: #d4a017; }
 </style>
 <section class="paper paipan" style="max-width:1000px">
-  <p class="beta-badge">紫微斗數・排盤工具（封測）</p>
-  <h2>紫微命盤</h2>
+  <p class="beta-badge">{% if zizhan %}紫占排盤・占問工具（封測）{% else %}紫微斗數・排盤工具（封測）{% endif %}</p>
+  <h2>{% if zizhan %}紫占命盤{% else %}紫微命盤{% endif %}</h2>
+  {% if zizhan %}
+  <form method="post" action="/zizhan" class="paipan-form">
+    <div class="paipan-time" style="flex-wrap:wrap">
+      <label style="flex:1 1 100%">問題
+        <textarea name="question" rows="2" required maxlength="200" style="width:100%;box-sizing:border-box">{{ question or '' }}</textarea></label>
+      <label>問事者性別 <select name="g">
+        <option value="男" {% if f.g == "男" %}selected{% endif %}>男</option>
+        <option value="女" {% if f.g == "女" %}selected{% endif %}>女</option>
+      </select></label>
+      <button class="btn btn-zhu" type="submit">起盤</button>
+    </div>
+  </form>
+  {% if mine and not chart %}<div class="zw-mine" style="margin:10px 0"><b>我的占問紀錄</b><ul>{% for r in mine %}<li><a href="/zizhan?rid={{ r.id }}">{{ r.question }}</a>　<span class="hint">{{ r.asked_at|fmt_ms }}</span></li>{% endfor %}</ul></div>{% endif %}
+  {% else %}
   <form method="get" class="paipan-form">
     <input type="hidden" name="mode" value="{{ f.mode }}">
     <div class="paipan-time" style="flex-wrap:wrap">
@@ -93,6 +119,7 @@
       <button class="btn btn-zhu" type="submit">排盤</button>
     </div>
   </form>
+  {% endif %}
   {% if error %}<p class="flags-msg">{{ error }}</p>{% endif %}
 
   {% if chart %}
@@ -100,16 +127,18 @@
   {% set hua_mark = {"祿": "祿", "權": "權", "科": "科", "忌": "忌"} %}
   {% set decs = chart.palaces|selectattr("decade")|sort(attribute="decade") %}
   {% set base = request.url %}
+  {% if question %}<p class="zw-ask-q">問：{{ question }}</p>{% endif %}
   <div class="zw-modebar">
     <a href="{{ base.include_query_params(mode='n') }}" class="{% if f.mode == 'n' %}on{% endif %}">本命</a>
     <a href="{{ base.include_query_params(mode='y') }}" class="{% if f.mode == 'y' %}on{% endif %}">流年</a>
+    {% if master %}<a href="/master/ziwei/records" style="margin-left:auto">命盤紀錄</a>{% endif %}
     {% if f.mode == 'y' %}
     <a href="{{ base.include_query_params(mode='y', ly=f.ly - 1) }}">◀</a>
     <span class="yr">{{ f.ly }}年</span>
     <a href="{{ base.include_query_params(mode='y', ly=f.ly + 1) }}">▶</a>
     {% endif %}
   </div>
-  <div class="zw-fit" id="zw-fit"><div class="zw-fit-in" id="zw-fit-in"><div class="zw-board{% if overlay %} liu-on{% endif %}">
+  <div class="zw-fit" id="zw-fit"><div class="zw-fit-in" id="zw-fit-in"><div class="zw-ring"><div class="zw-board{% if overlay %} liu-on{% endif %}">
     <div class="zw-grid">
       {% for p in chart.palaces %}
       <div class="zw-cell{% if overlay and p.index == overlay.ming %} liu-ming{% endif %}{% if overlay and p.decade and p.decade[0] <= overlay.age <= p.decade[1] %} dx-now{% endif %}" data-branch="{{ p.index }}" data-name="{{ p.name }}"{% if overlay %} data-liu="流{{ overlay.names[p.index] }}"{% endif %} style="grid-row:{{ p.grid[0] }};grid-column:{{ p.grid[1] }}">
@@ -153,14 +182,19 @@
         <div class="zw-hua-legend">自化圖示：<span class="zw-hua">祿</span> <span class="zw-hua">權</span> <span class="zw-hua">科</span> <span class="zw-hua">忌</span>（生年四化）</div>
       </div>
     </div>
+    </div>
+    {% set dirs = {0:"正北方",1:"北偏東",2:"東偏北",3:"正東方",4:"東偏南",5:"南偏東",6:"正南方",7:"南偏西",8:"西偏南",9:"正西方",10:"西偏北",11:"北偏西"} %}
+    {% for p in chart.palaces %}{% set r = p.grid[0] %}{% set c = p.grid[1] %}{% if c == 1 or c == 4 %}<span class="zw-dir {{ 'l' if c == 1 else 'r' }}" style="top:calc(20px + (100% - 40px) * {{ (r - 0.5) / 4 }})">{{ dirs[p.index] }}</span>{% else %}<span class="zw-dir {{ 't' if r == 1 else 'b' }}" style="left:calc(26px + (100% - 52px) * {{ (c - 0.5) / 4 }})">{{ dirs[p.index] }}</span>{% endif %}{% endfor %}
+    </div>
 
-    <div class="zw-table" style="margin-left:0">
+    <div class="zw-board zw-tblbox"><div class="zw-table" style="margin-left:0">
       <div class="hd">大限</div>
       {% for p in decs %}<div>{{ p.decade[0] }}~{{ p.decade[1] }}<br><b>{{ p.stem }}{{ p.branch }}限</b></div>{% endfor %}
       <div class="hd">流年</div>
       {% for r in liu %}<div class="zw-tbl-liu{% if f.mode == 'y' and r.year == f.ly %} on{% endif %}"><a href="{{ base.include_query_params(mode='y', ly=r.year) }}">{{ r.year }}年<br><b>{{ r.gz }}</b>{{ r.age }}歲</a></div>{% endfor %}
     </div>
-  </div></div></div>
+    </div>
+  </div></div>
   {% if overlay %}
   <div class="zw-legend">
     <span class="chip"><span class="sw" style="background:#fff6d6;border-color:#d4a017"></span>流命宮（整格金框）</span>
@@ -171,11 +205,23 @@
     <span class="chip"><span class="sw" style="box-shadow:inset 0 0 0 2px #1565c0"></span>現行大限（虛歲 {{ overlay.age }}）</span>
   </div>
   {% endif %}
-  {% if master and overlay %}
+  {% if master %}
   <div style="margin:10px 0">
-    <button type="button" class="btn btn-tong" id="zw-ai-btn">AI 解讀流年注意事項</button>
+    <button type="button" class="btn btn-tong" id="zw-ai-btn">解命盤</button>
     <span class="hint" id="zw-ai-msg"></span>
-    <div id="zw-ai-out" style="white-space:pre-wrap;margin-top:8px;font-size:14px;line-height:1.75;display:none;border:1px solid #c9b77a;padding:10px 12px;border-radius:6px;background:#fffdf5"></div>
+    <div id="zw-ai-out" contenteditable="true" title="可直接修改解讀內容，再按儲存" style="white-space:pre-wrap;margin-top:8px;font-size:14px;line-height:1.75;display:none;border:1px solid #c9b77a;padding:10px 12px;border-radius:6px;background:#fffdf5"></div>
+  </div>
+  {% endif %}
+  {% if master %}
+  <div class="zw-rec">
+    {% if rec and rec.kind == "占問" %}<div class="zw-ask-q">問：{{ rec.question }}　<span class="hint">（起盤時間 {{ rec.asked_at|fmt_ms }}）</span></div>{% endif %}
+    <div class="zw-rec-bar">
+      <input id="zw-rec-label" type="text" placeholder="名稱（例：王小明）" value="{{ rec.label if rec else '' }}">
+      <button type="button" class="btn btn-zhu" id="zw-rec-save">{{ '儲存修改' if rec else '儲存此命盤' }}</button>
+      {% if rec %}<button type="button" class="btn" id="zw-rec-del">刪除紀錄</button>{% endif %}
+      <span class="hint" id="zw-rec-msg">{% if rec %}已開啟紀錄，生辰以紀錄為準（要改生辰請另存新紀錄）{% else %}按「儲存此命盤」會把命盤、流年與解讀存成一筆紀錄{% endif %}</span>
+    </div>
+    <label class="zw-rec-note">備註<textarea id="zw-rec-note" rows="3">{{ rec.note if rec else '' }}</textarea></label>
   </div>
   {% endif %}
   <div class="zw-sanfang" id="zw-sanfang">點擊任一宮位，標示三方四正（本宮、對宮、三合兩宮）。</div>
@@ -184,6 +230,7 @@
 </section>
 {% endblock %}
 {% block scripts %}
+<script>window.ZW_REC = {{ rec_js|safe }};</script>
 <script>
   (() => {
     const grid = document.querySelector(".zw-grid");
@@ -302,7 +349,7 @@
     const fitBoard = () => {
       const outer = document.getElementById("zw-fit"), inner = document.getElementById("zw-fit-in");
       if (!outer || !inner) return;
-      const s = Math.min(1, outer.clientWidth / 800);
+      const s = Math.min(1, outer.clientWidth / 852);
       inner.style.transform = s < 1 ? `scale(${s})` : "";
       outer.style.height = s < 1 ? (inner.offsetHeight * s) + "px" : "";
     };
@@ -322,13 +369,14 @@
       const out = document.getElementById("zw-ai-out");
       aiBtn.addEventListener("click", async () => {
         aiBtn.disabled = true;
-        msg.textContent = "AI 解讀中，約需數十秒…";
+        msg.textContent = "解命盤中，約需數十秒…";
         out.style.display = "none";
         try {
           // 參數直接從排盤表單讀取，不依賴網址列
           const form = document.querySelector("form.paipan-form");
           const params = new URLSearchParams(new FormData(form));
           params.delete("mode");
+          if (REC) params.set("rid", REC.id);
           const r = await fetch("/master/ziwei/ai?" + params.toString(), { method: "POST", credentials: "same-origin" });
           const j = await r.json().catch(() => ({}));
           const detail = Array.isArray(j.detail)
@@ -341,6 +389,54 @@
         } finally {
           aiBtn.disabled = false;
         }
+      });
+    }
+
+    // 命盤紀錄：開啟紀錄時帶入已存的解讀；儲存（新增或修改）、刪除
+    const REC = window.ZW_REC || null;
+    const outEl = document.getElementById("zw-ai-out");
+    if (REC && REC.reading && outEl) { outEl.textContent = REC.reading; outEl.style.display = "block"; }
+    const recMsg = document.getElementById("zw-rec-msg");
+    const recSave = document.getElementById("zw-rec-save");
+    const recDel = document.getElementById("zw-rec-del");
+    const errOf = (j, r) => (typeof j.detail === "string" ? j.detail : `HTTP ${r.status}`);
+    const readingNow = () => (outEl && outEl.style.display !== "none") ? outEl.textContent : (REC ? REC.reading : "");
+    const jsonHeaders = { "Content-Type": "application/json" };
+    if (recSave) {
+      recSave.addEventListener("click", async () => {
+        recSave.disabled = true;
+        recMsg.textContent = "儲存中…";
+        const label = document.getElementById("zw-rec-label").value.trim();
+        const note = document.getElementById("zw-rec-note").value;
+        const reading = readingNow() || "";
+        try {
+          if (REC) {
+            const r = await fetch(`/master/ziwei/records/${REC.id}`, { method: "PATCH", credentials: "same-origin", headers: jsonHeaders, body: JSON.stringify({ label, note, reading }) });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(errOf(j, r));
+            recMsg.textContent = "已儲存修改";
+          } else {
+            const fd = new FormData(document.querySelector("form.paipan-form"));
+            const body = { y: fd.get("y"), m: fd.get("m"), d: fd.get("d"), h: fd.get("h"), mi: fd.get("mi") || 0, g: fd.get("g"), late: fd.get("late") ? 1 : 0, ly: fd.get("ly"), label, note, reading };
+            const r = await fetch("/master/ziwei/records", { method: "POST", credentials: "same-origin", headers: jsonHeaders, body: JSON.stringify(body) });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(errOf(j, r));
+            window.location.href = `/master/ziwei/paipan?rid=${j.id}`;
+            return;
+          }
+        } catch (e) {
+          recMsg.textContent = "儲存失敗：" + e.message;
+        } finally {
+          recSave.disabled = false;
+        }
+      });
+    }
+    if (recDel) {
+      recDel.addEventListener("click", async () => {
+        if (!confirm("確定刪除這筆紀錄？刪除後無法復原。")) return;
+        const r = await fetch(`/master/ziwei/records/${REC.id}`, { method: "DELETE", credentials: "same-origin" });
+        if (r.ok) window.location.href = "/master/ziwei/records";
+        else recMsg.textContent = "刪除失敗";
       });
     }
 

@@ -10,7 +10,7 @@
       <a class="btn btn-zhu" href="/ask">寫字問事</a>
       {% if 'yao' in (request.state.features or []) %}<a class="btn btn-tong" href="/yao">六龍問爻</a>{% endif %}
       {% if 'pair' in (request.state.features or []) %}<a class="btn btn-dai" href="/pair">雙字問心</a>{% endif %}
-      {% if 'ziwei' in (request.state.features or []) %}<a class="btn btn-dai" href="/ziwei" style="display:inline-flex;flex-direction:column;justify-content:center;line-height:1.3;text-align:center">紫微<br>排盤</a>{% endif %}
+      {% if 'ziwei' in (request.state.features or []) %}<a class="btn btn-dai" href="/ziwei" style="display:inline-flex;flex-direction:column;justify-content:center;line-height:1.3;text-align:center">紫微<br>排盤</a>{% endif %}{% if 'zizhan' in (request.state.features or []) %}<a class="btn btn-dai" href="/zizhan" style="display:inline-flex;flex-direction:column;justify-content:center;line-height:1.3;text-align:center">紫占<br>排盤</a>{% endif %}
     </div>
     <div class="install" id="install" hidden>
       <button class="btn on-yan" type="button" id="install-btn">安裝到手機主畫面</button>

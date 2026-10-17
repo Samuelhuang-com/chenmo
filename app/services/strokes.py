@@ -21,6 +21,25 @@ def clean_points(raw, max_points: int) -> list[list[float]]:
     return out
 
 
+def clean_strokes(raw, max_strokes: int, max_points: int) -> list[dict]:
+    """送出時附上的本機筆跡 → 可存成 stroke 事件的格式；同樣做數量與點數的夾限。"""
+    out: list[dict] = []
+    if not isinstance(raw, list):
+        return out
+    for s in raw[:max_strokes]:
+        if not isinstance(s, dict):
+            continue
+        pts = clean_points(s.get("points"), max_points)
+        if not pts:
+            continue
+        try:
+            t0 = int(s.get("t0") or 0)
+        except (TypeError, ValueError):
+            t0 = 0
+        out.append({"type": "stroke", "seq": len(out) + 1, "t0": t0, "points": pts})
+    return out
+
+
 def visible_strokes(events: list[dict]) -> list[dict]:
     """依事件重建「目前畫面上看得到的筆畫」（套用 undo / clear）。"""
     strokes: list[dict] = []

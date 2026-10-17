@@ -131,6 +131,9 @@ class SubmitIn(BaseModel):
     theme: str = Field(default="", max_length=32)    # 自選字的挑字方向代號（選填；伺服器核對後才記錄）
     group: str = Field(default="", max_length=48)
 
+    # 送出時附上問事者畫面上的筆跡（備援）：伺服器若沒有收到任何筆畫，就以這份為準
+    strokes: list[dict] = Field(default_factory=list, max_length=200)
+
     @field_validator("birth_year")
     @classmethod
     def _by(cls, v: int) -> int:
