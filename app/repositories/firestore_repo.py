@@ -7,12 +7,30 @@
 """
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
 from google.cloud import firestore
 
 from app.models import Case, CaseStatus, now_ms
+
+
+def _encode_event(event: dict) -> dict:
+    """Firestore 不允許「陣列裡面再放陣列」（nested arrays），筆畫的 points 是 [[x,y,dt,p], ...]，
+    所以寫入前把 points 轉成 JSON 字串；讀取時再還原。否則寫入會被拒絕，筆畫就存不進雲端。"""
+    if isinstance(event.get("points"), list):
+        return {**event, "points": json.dumps(event["points"], separators=(",", ":"))}
+    return dict(event)
+
+
+def _decode_event(data: dict) -> dict:
+    if isinstance(data.get("points"), str):
+        try:
+            return {**data, "points": json.loads(data["points"])}
+        except ValueError:
+            return data
+    return data
 
 
 class FirestoreCaseRepository:
@@ -90,10 +108,13 @@ class FirestoreCaseRepository:
     async def append_event(self, case_id: str, event: dict) -> None:
         # 同一案件的事件由同一條 WebSocket 依序處理，用奈秒時間戳當流水號即可保證順序，
         # 不需要 transaction（避免與 stroke_count 更新互相競爭）。
-        n = time.time_ns()
+        # 時鐘解析度不足（例如 Windows 約 15ms）時，連續兩次可能得到相同的值，文件 ID 相同就會互相覆蓋。
+        # 因此確保每次都比上一次大。
+        n = max(time.time_ns(), getattr(self, "_last_event_n", 0) + 1)
+        self._last_event_n = n
         ev_col = self.col.document(case_id).collection("events")
-        await ev_col.document(str(n)).set({**event, "n": n})
+        await ev_col.document(str(n)).set({**_encode_event(event), "n": n})
 
     async def list_events(self, case_id: str) -> list[dict]:
         ev_col = self.col.document(case_id).collection("events")
-        return [s.to_dict() async for s in ev_col.order_by("n").stream()]
+        return [_decode_event(s.to_dict()) async for s in ev_col.order_by("n").stream()]
